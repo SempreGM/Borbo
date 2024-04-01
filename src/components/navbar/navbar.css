@@ -1,0 +1,103 @@
+/* Estilos gerais */
+.navbar {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+    height: 100px; 
+    border-bottom: 2px solid #910A67;
+}
+
+form, .pesquisa {
+    font-size: 30px;
+    font-family: "Comfortaa";
+}
+
+.pesquisa {
+    width: 200px;
+    height: 10px;
+    border-radius: 10px;
+    border: 1px solid #910A67;
+    padding: 10px;
+    margin-left: 10px;
+    font-size: 15px;
+    outline: none; /* Removido o outline quando em foco */
+}
+
+.nav-bot ul {
+    list-style: none;
+    display: flex;
+}
+
+.nav-bot li {
+    padding: 10px;
+    font-family: 'Comfortaa';
+    box-sizing: border-box;
+    border: 2px solid #910A67;
+    border-radius: 5px;
+    margin-right: 5px;
+}
+
+.nav-bot li:hover {
+    background-color: #910A67;
+    color: white; /* Texto fica branco quando hover */
+}
+
+.nav-bot a {
+    text-decoration: none;
+    color: #030637;
+}
+
+#cart {
+    height: 45px; 
+    position: absolute;
+    top: 35px;
+    left: 1500px;
+    cursor: pointer;
+}
+
+/* Modal */
+.modal {
+    display: flex;
+    position: fixed;
+    top: 0;
+    left: 1365px;
+    width: 20%;
+    height: 100%;
+    background-color: #910A67;
+    justify-content: center;
+    align-items: center;
+    animation: fadeIn 0.5s;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 1);
+}
+
+@keyframes fadeIn {
+    0% {
+        opacity: 0;
+    }
+}
+
+.modal h1 {
+    color: white;
+    font-size: 30px;
+    font-family: "Comfortaa";
+    position: absolute;
+    top: 5px;
+}
+
+.modal-content {
+    background-color: white;
+    padding: 20px;
+    border-radius: 5px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+    font-family: 'Comfortaa';
+}
+
+.close {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    cursor: pointer;
+    font-size: 50px;
+    color: #fff;
+}
