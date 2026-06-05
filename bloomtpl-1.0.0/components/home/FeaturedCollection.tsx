@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import productsData from "@/data/products.json";
 import ProductCard from "./ProductCard";
 import { useAuth } from "@/context/AuthContext";
@@ -23,12 +23,11 @@ interface FeaturedCollectionProps {
 export default function FeaturedCollection({ name, description }: FeaturedCollectionProps) {
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
-  
+
   const [products, setProducts] = useState<FeaturedProduct[]>([]);
   const [isMounted, setIsMounted] = useState(false);
   const [isModified, setIsModified] = useState(false);
 
-  // Evita erros de hidratação com bibliotecas de Drag and Drop no Next.js
   useEffect(() => {
     setProducts(productsData.slice(0, 3));
     setIsMounted(true);
@@ -46,9 +45,9 @@ export default function FeaturedCollection({ name, description }: FeaturedCollec
   };
 
   const handleSave = () => {
-    console.log("Borbô Admin - Salvando destaque no banco:", products.map(p => p.id));
+    console.log("Borbô Admin - Salvando destaque no banco:", products.map((product) => product.id));
     setIsModified(false);
-    // Integração com Supabase virá aqui
+    // Integração com Supabase virá aqui.
   };
 
   const handleCancel = () => {
@@ -57,39 +56,42 @@ export default function FeaturedCollection({ name, description }: FeaturedCollec
   };
 
   const handleRemove = (productId: number) => {
-    setProducts((current) => current.filter((p) => p.id !== productId));
+    setProducts((current) => current.filter((product) => product.id !== productId));
     setIsModified(true);
   };
 
   if (!isMounted) return null;
 
   return (
-    <section className="py-12 border-y border-[#ffc4a6]/30 bg-[#ffc4a6]/5 overflow-hidden">
+    <section id="colecao" className="py-12 border-y border-[#ffc4a6]/30 bg-[#ffc4a6]/5 overflow-hidden">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="mb-10 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
           <div className="text-center lg:text-left">
-            <h2 className="text-3xl font-bold tracking-tight text-[#ec5c8d] sm:text-4xl uppercase">
+            <p className="mb-2 text-sm font-medium uppercase tracking-widest text-primary">
+              Destaque da semana
+            </p>
+            <h2 className="text-3xl font-bold tracking-normal text-[#ec5c8d] sm:text-4xl">
               {name}
             </h2>
             {description && (
-              <p className="mt-2 text-muted-foreground text-lg italic">{description}</p>
+              <p className="mt-2 text-muted-foreground text-lg">{description}</p>
             )}
           </div>
           {isAdmin && (
             <div className="flex flex-col items-end gap-2">
               {!isModified ? (
                 <div className="bg-[#ec5c8d]/10 text-[#ec5c8d] px-4 py-2 rounded-full text-[10px] font-bold uppercase tracking-wider border border-[#ec5c8d]/20">
-                  Modo Admin: Reorganize a vitrine
+                  Modo Admin: reorganize a vitrine
                 </div>
               ) : (
                 <div className="flex gap-2">
-                  <button 
+                  <button
                     onClick={handleSave}
                     className="bg-[#ec5c8d] text-white px-4 py-2 rounded-full text-xs font-bold hover:bg-[#ec5c8d]/90 shadow-sm transition-all"
                   >
-                    Salvar Ordem
+                    Salvar ordem
                   </button>
-                  <button 
+                  <button
                     onClick={handleCancel}
                     className="bg-white text-muted-foreground border border-border px-4 py-2 rounded-full text-xs font-bold hover:bg-slate-50 transition-all"
                   >
@@ -100,13 +102,13 @@ export default function FeaturedCollection({ name, description }: FeaturedCollec
             </div>
           )}
         </div>
-        
+
         {isAdmin ? (
           <DragDropContext onDragEnd={onDragEnd}>
             <Droppable droppableId="featured-list" direction="vertical">
               {(provided) => (
-                <div 
-                  {...provided.droppableProps} 
+                <div
+                  {...provided.droppableProps}
                   ref={provided.innerRef}
                   className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
                 >
@@ -118,16 +120,14 @@ export default function FeaturedCollection({ name, description }: FeaturedCollec
                           {...provided.draggableProps}
                           className={`relative transition-all ${snapshot.isDragging ? "z-50 scale-105" : ""}`}
                         >
-                          {/* Alça de Arrasto (Drag Handle) */}
-                          <div 
+                          <div
                             {...provided.dragHandleProps}
                             className="absolute top-4 left-4 z-30 p-2 bg-white/90 rounded-full shadow-md cursor-grab active:cursor-grabbing hover:bg-white transition-colors"
                             title="Segure para mover"
                           >
                             <GripVertical className="h-4 w-4 text-[#ec5c8d]" />
                           </div>
-                          {/* Botão de Remoção */}
-                          <button 
+                          <button
                             onClick={() => handleRemove(product.id)}
                             className="absolute top-4 right-4 z-30 p-2 bg-white/90 rounded-full shadow-md hover:bg-rose-50 text-rose-500 transition-colors"
                             title="Remover da coleção"

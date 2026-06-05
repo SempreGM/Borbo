@@ -8,6 +8,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import productsData from "@/data/products.json";
+import {
+  defaultHeroBannerSettings,
+  HERO_BANNER_STORAGE_KEY,
+  HeroBannerSettings,
+  MAX_SITE_IMAGE_UPLOAD_SIZE_BYTES,
+  MAX_SITE_IMAGE_UPLOAD_SIZE_LABEL,
+  normalizeHeroBannerSettings,
+} from "@/lib/heroBanner";
 
 type ProductItem = {
   id: number;
@@ -30,7 +38,7 @@ type Collection = {
 export default function AdminPage() {
   const { user } = useAuth();
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<"produtos" | "colecoes" | "notificacoes">("produtos");
+  const [activeTab, setActiveTab] = useState<"produtos" | "colecoes" | "banner" | "notificacoes">("produtos");
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [itemName, setItemName] = useState("");
   const [description, setDescription] = useState("");
@@ -46,6 +54,10 @@ export default function AdminPage() {
   const [selectedProductIds, setSelectedProductIds] = useState<number[]>([]);
   const [collections, setCollections] = useState<Collection[]>([]);
   const [editingCollectionId, setEditingCollectionId] = useState<string | null>(null);
+  const [bannerSettings, setBannerSettings] = useState<HeroBannerSettings>(defaultHeroBannerSettings);
+  const [bannerImagesText, setBannerImagesText] = useState(defaultHeroBannerSettings.imageUrls.join("\n"));
+  const [bannerSaved, setBannerSaved] = useState(false);
+  const [bannerUploadError, setBannerUploadError] = useState("");
 
   const notifications = [
     {
@@ -108,6 +120,24 @@ export default function AdminPage() {
       router.replace("/");
     }
   }, [user, router]);
+
+  useEffect(() => {
+    const savedBanner = localStorage.getItem(HERO_BANNER_STORAGE_KEY);
+
+    if (!savedBanner) {
+      return;
+    }
+
+    try {
+      const parsedBanner = normalizeHeroBannerSettings(
+        JSON.parse(savedBanner) as HeroBannerSettings
+      );
+      setBannerSettings(parsedBanner);
+      setBannerImagesText(parsedBanner.imageUrls.join("\n"));
+    } catch {
+      localStorage.removeItem(HERO_BANNER_STORAGE_KEY);
+    }
+  }, []);
 
   const handleAddCatalogItem = (event: React.FormEvent) => {
     event.preventDefault();
@@ -273,6 +303,111 @@ export default function AdminPage() {
     setEditingCollectionId(null);
   };
 
+  const handleBannerFieldChange = (
+    field: keyof Omit<HeroBannerSettings, "imageUrls">,
+    value: string
+  ) => {
+    setBannerSettings((current) => ({
+      ...current,
+      [field]: value,
+    }));
+    setBannerSaved(false);
+  };
+
+  const readImageAsDataUrl = (file: File) =>
+    new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+
+      reader.onload = () => resolve(String(reader.result));
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(file);
+    });
+
+  const handleBannerImageUpload = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const files = Array.from(event.target.files ?? []);
+    event.target.value = "";
+
+    if (files.length === 0) {
+      return;
+    }
+
+    const oversizedFile = files.find(
+      (file) => file.size > MAX_SITE_IMAGE_UPLOAD_SIZE_BYTES
+    );
+
+    if (oversizedFile) {
+      setBannerUploadError(
+        `A imagem "${oversizedFile.name}" ultrapassa o limite de ${MAX_SITE_IMAGE_UPLOAD_SIZE_LABEL}.`
+      );
+      return;
+    }
+
+    const currentImages = bannerImagesText
+      .split("\n")
+      .map((imageUrl) => imageUrl.trim())
+      .filter(Boolean);
+
+    const availableSlots = Math.max(0, 5 - currentImages.length);
+
+    if (availableSlots === 0) {
+      setBannerUploadError("O banner aceita no máximo 5 imagens.");
+      return;
+    }
+
+    try {
+      const uploadedImages = await Promise.all(
+        files.slice(0, availableSlots).map(readImageAsDataUrl)
+      );
+      const nextImages = [...currentImages, ...uploadedImages].slice(0, 5);
+
+      setBannerImagesText(nextImages.join("\n"));
+      setBannerUploadError("");
+      setBannerSaved(false);
+    } catch {
+      setBannerUploadError("Não foi possível carregar uma das imagens selecionadas.");
+    }
+  };
+
+  const handleRemoveBannerImage = (imageIndex: number) => {
+    const nextImages = bannerImagesText
+      .split("\n")
+      .map((imageUrl) => imageUrl.trim())
+      .filter(Boolean)
+      .filter((_, index) => index !== imageIndex);
+
+    setBannerImagesText(nextImages.join("\n"));
+    setBannerUploadError("");
+    setBannerSaved(false);
+  };
+
+  const handleSaveBanner = (event: React.FormEvent) => {
+    event.preventDefault();
+
+    const updatedBanner = normalizeHeroBannerSettings({
+      ...bannerSettings,
+      imageUrls: bannerImagesText
+        .split("\n")
+        .map((imageUrl) => imageUrl.trim())
+        .filter(Boolean),
+    });
+
+    localStorage.setItem(HERO_BANNER_STORAGE_KEY, JSON.stringify(updatedBanner));
+    setBannerSettings(updatedBanner);
+    setBannerImagesText(updatedBanner.imageUrls.join("\n"));
+    setBannerUploadError("");
+    setBannerSaved(true);
+  };
+
+  const handleResetBanner = () => {
+    localStorage.removeItem(HERO_BANNER_STORAGE_KEY);
+    setBannerSettings(defaultHeroBannerSettings);
+    setBannerImagesText(defaultHeroBannerSettings.imageUrls.join("\n"));
+    setBannerUploadError("");
+    setBannerSaved(false);
+  };
+
   if (!user || user.role !== "admin") {
     return null;
   }
@@ -304,6 +439,12 @@ export default function AdminPage() {
             onClick={() => setActiveTab("colecoes")}
           >
             Coleções
+          </Button>
+          <Button
+            variant={activeTab === "banner" ? "default" : "outline"}
+            onClick={() => setActiveTab("banner")}
+          >
+            Banner
           </Button>
           <Button
             variant={activeTab === "notificacoes" ? "default" : "outline"}
@@ -630,6 +771,198 @@ export default function AdminPage() {
                 Nenhuma coleção criada ainda. Crie uma coleção e adicione produtos abaixo.
               </div>
             )}
+          </div>
+        ) : activeTab === "banner" ? (
+          <div className="mt-8 space-y-8">
+            <div className="rounded-3xl border border-border bg-background p-6">
+              <div className="mb-6">
+                <h2 className="text-lg font-semibold text-foreground">Banner da Home</h2>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Edite o texto principal, os botões e as imagens exibidas atrás do título da página inicial.
+                </p>
+              </div>
+
+              <form className="space-y-6" onSubmit={handleSaveBanner}>
+                <div>
+                  <label className="text-sm font-medium text-foreground mb-2 block">
+                    Chamada superior
+                  </label>
+                  <Input
+                    type="text"
+                    value={bannerSettings.eyebrow}
+                    onChange={(event) => handleBannerFieldChange("eyebrow", event.target.value)}
+                    placeholder="Ex: Nova coleção com descontos especiais"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium text-foreground mb-2 block">
+                    Título principal
+                  </label>
+                  <Input
+                    type="text"
+                    value={bannerSettings.title}
+                    onChange={(event) => handleBannerFieldChange("title", event.target.value)}
+                    placeholder="Vista sua melhor versão com a Borbô"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium text-foreground mb-2 block">
+                    Descrição
+                  </label>
+                  <Textarea
+                    value={bannerSettings.description}
+                    onChange={(event) => handleBannerFieldChange("description", event.target.value)}
+                    placeholder="Texto de apoio do banner"
+                    rows={3}
+                    required
+                  />
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div>
+                    <label className="text-sm font-medium text-foreground mb-2 block">
+                      Texto do botão principal
+                    </label>
+                    <Input
+                      type="text"
+                      value={bannerSettings.primaryButtonLabel}
+                      onChange={(event) => handleBannerFieldChange("primaryButtonLabel", event.target.value)}
+                      placeholder="Ver coleção"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-foreground mb-2 block">
+                      Link do botão principal
+                    </label>
+                    <Input
+                      type="text"
+                      value={bannerSettings.primaryButtonHref}
+                      onChange={(event) => handleBannerFieldChange("primaryButtonHref", event.target.value)}
+                      placeholder="/shop"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium text-foreground mb-2 block">
+                    Link do Instagram
+                  </label>
+                  <Input
+                    type="url"
+                    value={bannerSettings.instagramHref}
+                    onChange={(event) => handleBannerFieldChange("instagramHref", event.target.value)}
+                    placeholder="https://www.instagram.com/seja.borbo/"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium text-foreground mb-2 block">
+                    Imagens do fundo
+                  </label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={handleBannerImageUpload}
+                    className="mb-3 w-full rounded-2xl border border-border bg-white px-3 py-2 text-sm text-foreground"
+                  />
+                  <p className="text-xs text-muted-foreground mb-3">
+                    Envie até 5 imagens. Cada imagem deve ter no máximo {MAX_SITE_IMAGE_UPLOAD_SIZE_LABEL}.
+                  </p>
+                  {bannerUploadError ? (
+                    <p className="mb-3 text-sm font-medium text-destructive">
+                      {bannerUploadError}
+                    </p>
+                  ) : null}
+                  {bannerImagesText
+                    .split("\n")
+                    .map((imageUrl) => imageUrl.trim())
+                    .filter(Boolean).length > 0 ? (
+                    <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+                      {bannerImagesText
+                        .split("\n")
+                        .map((imageUrl) => imageUrl.trim())
+                        .filter(Boolean)
+                        .map((imageUrl, index) => (
+                          <div
+                            key={`${imageUrl}-${index}`}
+                            className="overflow-hidden rounded-2xl border border-border bg-white"
+                          >
+                            <div className="aspect-square bg-muted">
+                              <img
+                                src={imageUrl}
+                                alt={`Imagem ${index + 1} do banner`}
+                                className="h-full w-full object-cover"
+                              />
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveBannerImage(index)}
+                              className="w-full px-3 py-2 text-xs font-medium text-destructive hover:bg-rose-50"
+                            >
+                              Remover
+                            </button>
+                          </div>
+                        ))}
+                    </div>
+                  ) : null}
+                  <Textarea
+                    value={bannerImagesText}
+                    onChange={(event) => {
+                      setBannerImagesText(event.target.value);
+                      setBannerSaved(false);
+                    }}
+                    placeholder="Cole uma URL por linha"
+                    rows={6}
+                    required
+                  />
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Use até 5 URLs de imagem. Uma imagem por linha.
+                  </p>
+                </div>
+
+                <div className="rounded-3xl border border-border bg-white p-6">
+                  <p className="text-sm font-semibold text-foreground mb-2">Prévia textual</p>
+                  <p className="text-xs uppercase tracking-widest text-primary">
+                    {bannerSettings.eyebrow}
+                  </p>
+                  <h3 className="mt-2 text-2xl font-semibold text-foreground">
+                    {bannerSettings.title}
+                  </h3>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    {bannerSettings.description}
+                  </p>
+                </div>
+
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex flex-col gap-3 sm:flex-row">
+                    <Button type="submit" className="w-full sm:w-auto">
+                      Salvar banner
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleResetBanner}
+                      className="w-full sm:w-auto"
+                    >
+                      Restaurar padrão
+                    </Button>
+                  </div>
+                  {bannerSaved ? (
+                    <p className="text-sm font-medium text-primary">
+                      Banner salvo. Volte para a Home para visualizar.
+                    </p>
+                  ) : null}
+                </div>
+              </form>
+            </div>
           </div>
         ) : (
           <div className="mt-8 space-y-8">

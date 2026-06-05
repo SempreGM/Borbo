@@ -13,9 +13,9 @@ const font = Public_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Borbô — Moda Feminina",
+  title: "Borbô | Moda feminina elegante e acessível",
   description:
-    "Borbô é um e-commerce de moda feminina elegante e acessível. Encontre looks modernos e confortáveis para mulheres que querem se sentir confiantes.",
+    "Borbô é um e-commerce de moda feminina elegante e acessível. Encontre looks modernos, leves e versáteis para vestir sua melhor versão.",
 };
 
 export default function RootLayout({
@@ -24,7 +24,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="pt-BR">
       <body
         className={`${font.className} font-sans antialiased flex flex-col min-h-screen`}
       >

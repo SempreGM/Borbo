@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import productsData from "@/data/products.json";
 import ProductCard from "./ProductCard";
 import { useAuth } from "@/context/AuthContext";
@@ -18,8 +18,7 @@ interface Product {
 export default function ProductList() {
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
-  
-  // Limitador de 15 itens
+
   const [products, setProducts] = useState<Product[]>([]);
   const [isMounted, setIsMounted] = useState(false);
   const [isModified, setIsModified] = useState(false);
@@ -41,7 +40,7 @@ export default function ProductList() {
   };
 
   const handleSave = () => {
-    console.log("Borbô Admin - Salvando listagem geral:", products.map(p => p.id));
+    console.log("Borbô Admin - Salvando listagem geral:", products.map((product) => product.id));
     setIsModified(false);
   };
 
@@ -51,7 +50,7 @@ export default function ProductList() {
   };
 
   const handleRemove = (productId: number) => {
-    setProducts((current) => current.filter((p) => p.id !== productId));
+    setProducts((current) => current.filter((product) => product.id !== productId));
     setIsModified(true);
   };
 
@@ -61,17 +60,17 @@ export default function ProductList() {
     <div className="max-w-7xl mx-auto">
       {isAdmin && (
         <div className={`flex gap-2 mb-8 transition-all duration-300 ${isModified ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-4 pointer-events-none"}`}>
-          <button 
+          <button
             onClick={handleSave}
             className="bg-[#ec5c8d] text-white px-6 py-2 rounded-full text-sm font-bold shadow-md hover:bg-[#ec5c8d]/90"
           >
-            Salvar Ordem Geral
+            Salvar ordem geral
           </button>
-          <button 
+          <button
             onClick={handleCancel}
             className="bg-white text-muted-foreground border border-border px-6 py-2 rounded-full text-sm font-bold hover:bg-slate-50"
           >
-            Descartar Alterações
+            Descartar alterações
           </button>
         </div>
       )}
@@ -80,8 +79,8 @@ export default function ProductList() {
         <DragDropContext onDragEnd={onDragEnd}>
           <Droppable droppableId="main-product-list" direction="vertical">
             {(provided) => (
-              <div 
-                {...provided.droppableProps} 
+              <div
+                {...provided.droppableProps}
                 ref={provided.innerRef}
                 className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
               >
@@ -93,14 +92,13 @@ export default function ProductList() {
                         {...provided.draggableProps}
                         className={`relative ${snapshot.isDragging ? "z-50" : ""}`}
                       >
-                        <div 
+                        <div
                           {...provided.dragHandleProps}
                           className="absolute top-4 left-4 z-30 p-2 bg-white/90 rounded-full shadow-md cursor-grab active:cursor-grabbing"
                         >
                           <GripVertical className="h-4 w-4 text-[#ec5c8d]" />
                         </div>
-                        {/* Botão de Remoção */}
-                        <button 
+                        <button
                           onClick={() => handleRemove(product.id)}
                           className="absolute top-4 right-4 z-30 p-2 bg-white/90 rounded-full shadow-md hover:bg-rose-50 text-rose-500 transition-colors"
                           title="Remover da vitrine"

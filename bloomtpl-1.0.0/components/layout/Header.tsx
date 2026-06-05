@@ -8,33 +8,31 @@ import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "../ui/button";
 
+type NotificationItem = {
+  id: number;
+  title: string;
+  description: string;
+  type: string;
+  details: Record<string, string>;
+};
+
 export default function Header() {
   const { user, signOut } = useAuth();
   const { cart } = useCart();
-  const cartCount =
-    cart?.reduce((total, item) => total + item.quantity, 0) || 0;
+  const cartCount = cart?.reduce((total, item) => total + item.quantity, 0) || 0;
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
-  const [selectedNotification, setSelectedNotification] = useState<
-    | {
-        id: number;
-        title: string;
-        description: string;
-        type: string;
-        details: Record<string, string>;
-      }
-    | null
-  >(null);
+  const [selectedNotification, setSelectedNotification] = useState<NotificationItem | null>(null);
   const [isScrolled, setIsScrolled] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const pathname = usePathname();
 
-  const adminNotifications = [
+  const adminNotifications: NotificationItem[] = [
     {
       id: 1,
       title: "Novo pedido recebido",
-      description: "Cliente Maria Silva comprou Vestido Floral.",
+      description: "Cliente Maria Silva comprou Vestido Midi Aurora.",
       type: "order",
       details: {
         "Endereço de entrega": "Rua das Flores, 123 - Jardim Primavera, São Paulo/SP",
@@ -54,41 +52,18 @@ export default function Header() {
         Telefone: "+55 (21) 99876-5432",
       },
     },
-    {
-      id: 3,
-      title: "Mensagem de contato",
-      description: "Solicitação de atendimento pelo formulário de contato.",
-      type: "contact",
-      details: {
-        "Nome do cliente": "Juliana Costa",
-        Email: "juliana.costa@email.com",
-        Telefone: "+55 (31) 91234-5678",
-      },
-    },
   ];
 
-  const customerNotifications = [
+  const customerNotifications: NotificationItem[] = [
     {
       id: 1,
       title: "Pedido confirmado",
-      description: "Seu pedido #12345 foi confirmado.",
+      description: "Seu pedido #B-1024 foi confirmado.",
       type: "order_status",
       details: {
-        "Número do pedido": "#12345",
+        "Número do pedido": "#B-1024",
         Status: "Confirmado",
-        "Data": new Date(Date.now() - 3600000).toLocaleString("pt-BR"),
-      },
-    },
-    {
-      id: 2,
-      title: "Pedido enviado",
-      description: "Seu pedido #12345 foi despachado para entrega.",
-      type: "order_status",
-      details: {
-        "Número do pedido": "#12345",
-        Status: "Enviado",
-        "Código de rastreamento": "BR123456789BR",
-        "Data": new Date(Date.now() - 1800000).toLocaleString("pt-BR"),
+        Data: new Date(Date.now() - 3600000).toLocaleString("pt-BR"),
       },
     },
   ];
@@ -125,13 +100,7 @@ export default function Header() {
   }, []);
 
   const handleSelectNotification = useCallback(
-    (notification: {
-      id: number;
-      title: string;
-      description: string;
-      type: string;
-      details: Record<string, string>;
-    }) => {
+    (notification: NotificationItem) => {
       setSelectedNotification(notification);
     },
     []
@@ -143,14 +112,19 @@ export default function Header() {
 
   const isActivePath = (path: string) => pathname === path;
 
-  const navItems = [{ href: "/contact", label: "Contato" }];
+  const navItems = [
+    { href: "/shop", label: "Loja" },
+    { href: "/#colecao", label: "Coleção" },
+    { href: "/about", label: "Quem somos" },
+    { href: "/contact", label: "Contato" },
+  ];
 
   return (
     <header
       className={`sticky top-0 z-50 transition-all duration-300 ${
         isScrolled
           ? "bg-white/95 backdrop-blur-xl border-b border-gray-200 shadow-lg"
-          : "bg-white/80 backdrop-blur-md border-b border-gray-200 shadow-sm"
+          : "bg-white/85 backdrop-blur-md border-b border-gray-200 shadow-sm"
       }`}
     >
       <div className="container mx-auto px-4 sm:px-6 py-4">
@@ -161,13 +135,13 @@ export default function Header() {
               href="/"
               aria-label="Borbô Home"
             >
-              BORBÔ
+              borbô
             </Link>
 
             <nav
               className="hidden md:flex items-center space-x-1"
               role="navigation"
-              aria-label="Main navigation"
+              aria-label="Navegação principal"
             >
               {navItems.map(({ href, label }) => (
                 <Link
@@ -187,11 +161,12 @@ export default function Header() {
           </div>
 
           <div className="hidden lg:flex flex-1 max-w-2xl">
-            <form className="relative w-full">
+            <form action="/shop" method="GET" className="relative w-full">
               <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-rose-400" />
               <input
                 type="search"
-                placeholder="Buscar roupas, vestidos e looks..."
+                name="q"
+                placeholder="Buscar vestidos, blusas e looks..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-11 pr-4 py-3 text-sm border border-rose-200 rounded-full bg-white text-rose-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-rose-300 focus:border-transparent transition-all"
@@ -204,7 +179,7 @@ export default function Header() {
             <button
               onClick={toggleMobileMenu}
               className="md:hidden p-2 rounded-full hover:bg-gray-100 transition-colors"
-              aria-label="Toggle navigation menu"
+              aria-label="Abrir menu"
               aria-expanded={isMobileOpen}
             >
               {isMobileOpen ? (
@@ -306,62 +281,56 @@ export default function Header() {
 
             <div className="hidden sm:flex items-center space-x-2 relative">
               {user ? (
-                <>
-                  <div className="relative">
-                    <button
-                      type="button"
-                      title="Conta do usuário"
-                      onClick={toggleUserMenu}
-                      className="p-2 rounded-full hover:bg-gray-100 transition-colors"
-                    >
-                      <User className="h-6 w-6 text-primary" />
-                    </button>
-                    {isUserMenuOpen && (
-                      <div className="absolute right-0 mt-2 w-44 overflow-hidden rounded-3xl border border-border bg-white shadow-lg ring-1 ring-black ring-opacity-5 z-50">
-                        <div className="flex flex-col">
+                <div className="relative">
+                  <button
+                    type="button"
+                    title="Conta do usuário"
+                    onClick={toggleUserMenu}
+                    className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+                  >
+                    <User className="h-6 w-6 text-primary" />
+                  </button>
+                  {isUserMenuOpen && (
+                    <div className="absolute right-0 mt-2 w-44 overflow-hidden rounded-3xl border border-border bg-white shadow-lg ring-1 ring-black ring-opacity-5 z-50">
+                      <div className="flex flex-col">
+                        <Link
+                          href="/perfil"
+                          className="block px-4 py-3 text-sm text-foreground transition-colors hover:bg-slate-100"
+                          onClick={() => setIsUserMenuOpen(false)}
+                        >
+                          Minha conta
+                        </Link>
+                        {user?.role === "admin" ? (
                           <Link
-                            href="/perfil"
+                            href="/admin"
                             className="block px-4 py-3 text-sm text-foreground transition-colors hover:bg-slate-100"
                             onClick={() => setIsUserMenuOpen(false)}
                           >
-                            Minha conta
+                            Painel
                           </Link>
-                          {user?.role === "admin" ? (
-                            <Link
-                              href="/admin"
-                              className="block px-4 py-3 text-sm text-foreground transition-colors hover:bg-slate-100"
-                              onClick={() => setIsUserMenuOpen(false)}
-                            >
-                              Painel
-                            </Link>
-                          ) : null}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              signOut();
-                              setIsUserMenuOpen(false);
-                            }}
-                            className="w-full text-left px-4 py-3 text-sm text-foreground transition-colors hover:bg-slate-100"
-                          >
-                            Sair
-                          </button>
-                        </div>
+                        ) : null}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            signOut();
+                            setIsUserMenuOpen(false);
+                          }}
+                          className="w-full text-left px-4 py-3 text-sm text-foreground transition-colors hover:bg-slate-100"
+                        >
+                          Sair
+                        </button>
                       </div>
-                    )}
-                  </div>
-                </>
+                    </div>
+                  )}
+                </div>
               ) : (
                 <>
-                  <Link href="/entrar">
-                    <Button variant="ghost" size="sm" className="text-sm">
-                      Entrar
-                    </Button>
-                  </Link>
-                  <Link href="/cadastrar">
-                    <Button size="sm" variant="default" className="text-sm">
-                      Cadastrar
-                    </Button>
-                  </Link>
+                  <Button variant="ghost" size="sm" asChild>
+                    <Link href="/entrar">Entrar</Link>
+                  </Button>
+                  <Button size="sm" variant="default" asChild>
+                    <Link href="/cadastrar">Cadastrar</Link>
+                  </Button>
                 </>
               )}
             </div>
@@ -372,7 +341,7 @@ export default function Header() {
           <nav
             className="md:hidden mt-4 animate-in slide-in-from-top duration-200"
             role="navigation"
-            aria-label="Mobile navigation"
+            aria-label="Navegação mobile"
           >
             <div className="flex flex-col space-y-3 pb-4 border-b border-gray-200">
               {navItems.map(({ href, label }) => (
@@ -382,7 +351,7 @@ export default function Header() {
                   onClick={closeMobileMenu}
                   className={`text-sm font-medium py-2 px-3 rounded-lg transition-all ${
                     isActivePath(href)
-                      ? "bg-orange-100"
+                      ? "bg-rose-100"
                       : "text-gray-700 hover:text-gray-900 hover:bg-gray-50"
                   }`}
                   aria-current={isActivePath(href) ? "page" : undefined}
@@ -392,16 +361,24 @@ export default function Header() {
               ))}
             </div>
 
+            <form action="/shop" method="GET" className="relative my-4">
+              <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-rose-400" />
+              <input
+                type="search"
+                name="q"
+                placeholder="Buscar produtos"
+                className="w-full rounded-full border border-rose-200 bg-white py-3 pl-11 pr-4 text-sm text-rose-900"
+              />
+            </form>
+
             <div className="flex flex-col space-y-3 pt-4 sm:hidden">
               {user ? (
                 <>
-                  <button
-                    type="button"
-                    title="Conta do usuário"
-                    className="p-2 rounded-full hover:bg-gray-100 transition-colors"
-                  >
-                    <User className="h-6 w-6 text-primary" />
-                  </button>
+                  <Button variant="outline" className="w-full text-sm" asChild>
+                    <Link href="/perfil" onClick={closeMobileMenu}>
+                      Minha conta
+                    </Link>
+                  </Button>
                   <Button
                     variant="outline"
                     className="w-full text-sm"

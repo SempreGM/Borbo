@@ -10,10 +10,10 @@ import { Separator } from "../ui/separator";
 export default function Footer() {
   const [email, setEmail] = useState("");
 
-  const handleNewsletterSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleNewsletterSubmit = (event: React.FormEvent) => {
+    event.preventDefault();
     if (email) {
-      console.log("Newsletter subscription:", email);
+      console.log("Newsletter Borbô:", email);
       setEmail("");
     }
   };
@@ -24,29 +24,26 @@ export default function Footer() {
       links: [
         { href: "/shop", label: "Todos os produtos" },
         { href: "/shop", label: "Novidades" },
-        { href: "/shop", label: "Promoções" },
-        { href: "/shop", label: "Destaques" },
+        { href: "/#colecao", label: "Coleção em destaque" },
         { href: "/about", label: "Quem somos" },
       ],
     },
     {
       title: "Atendimento",
       links: [
-        { href: "/contact", label: "Fale Conosco" },
+        { href: "/contact", label: "Fale conosco" },
         { href: "/shipping", label: "Frete" },
+        { href: "/returns", label: "Trocas e devoluções" },
+        { href: "/help", label: "Ajuda" },
       ],
     },
     {
       title: "Legal",
       links: [
-        { href: "/privacy", label: "Política de Privacidade" },
-        { href: "/terms", label: "Termos e Condições" },
+        { href: "/privacy", label: "Política de privacidade" },
+        { href: "/terms", label: "Termos e condições" },
       ],
     },
-  ];
-
-  const socialLinks = [
-    { href: "https://www.instagram.com/seja.borbo/", icon: Instagram, label: "Instagram" },
   ];
 
   return (
@@ -58,8 +55,8 @@ export default function Footer() {
               Fique por dentro
             </h3>
             <p className="text-muted-foreground mb-6">
-              Assine nossa newsletter para receber ofertas exclusivas, novidades
-              e inspiração de estilo.
+              Receba novidades, ofertas especiais e inspirações de estilo da
+              Borbô direto no seu e-mail.
             </p>
             <form
               onSubmit={handleNewsletterSubmit}
@@ -69,7 +66,7 @@ export default function Footer() {
                 type="email"
                 placeholder="Digite seu e-mail"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(event) => setEmail(event.target.value)}
                 className="flex-1"
                 required
               />
@@ -92,21 +89,21 @@ export default function Footer() {
                 href="/"
                 aria-label="Borbô Home"
               >
-                BORBÔ
+                borbô
               </Link>
               <p className="text-muted-foreground mb-6 max-w-sm">
-                Descubra produtos únicos que inspiram seu estilo. Qualidade e
-                design moderno em cada peça.
+                Moda feminina leve, elegante e acessível para mulheres que
+                querem expressar personalidade com confiança.
               </p>
 
               <div className="space-y-3">
                 <div className="flex items-center gap-3 text-sm text-muted-foreground">
                   <MapPin className="h-4 w-4 text-primary" />
-                  <span>123 Fashion Street, Style City, SC 12345</span>
+                  <span>Atendimento online para todo o Brasil</span>
                 </div>
                 <div className="flex items-center gap-3 text-sm text-muted-foreground">
                   <Phone className="h-4 w-4 text-primary" />
-                  <span>+1 (555) 123-4567</span>
+                  <span>(11) 4000-1234</span>
                 </div>
                 <div className="flex items-center gap-3 text-sm text-muted-foreground">
                   <Mail className="h-4 w-4 text-primary" />
@@ -115,27 +112,26 @@ export default function Footer() {
               </div>
 
               <div className="flex gap-3 mt-6">
-                {socialLinks.map(({ href, icon: Icon, label }) => (
-                  <Button
-                    key={label}
-                    variant="ghost"
-                    size="icon"
-                    asChild
-                    className="h-12 w-12 rounded-full bg-muted hover:bg-primary hover:text-primary-foreground transition-colors"
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  asChild
+                  className="h-12 w-12 rounded-full bg-muted hover:bg-primary hover:text-primary-foreground transition-colors"
+                >
+                  <a
+                    href="https://www.instagram.com/seja.borbo/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label="Instagram"
                   >
-                    <Link href={href} target="_blank" rel="noopener noreferrer" aria-label={label}>
-                      <Icon className="h-6 w-6" />
-                    </Link>
-                  </Button>
-                ))}
+                    <Instagram className="h-6 w-6" />
+                  </a>
+                </Button>
               </div>
             </div>
 
-            {footerSections.map((section, index) => (
-              <div
-                key={section.title}
-                className={`${index >= 2 ? "lg:col-span-1" : ""}`}
-              >
+            {footerSections.map((section) => (
+              <div key={section.title}>
                 <h4 className="text-sm font-semibold text-foreground mb-4 uppercase tracking-wider">
                   {section.title}
                 </h4>
@@ -159,14 +155,10 @@ export default function Footer() {
         <Separator className="my-8" />
 
         <div className="py-6 flex flex-col md:flex-row justify-between items-center gap-4">
-          <div>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <span>© 2025 Borbô™. Feito com</span>
-              <Heart className="h-4 w-4 text-red-500 fill-current" />
-              <span>Todos os direitos reservados.</span>
-              <br />
-            </div>
-            <p className="text-sm text-muted-foreground">Desenvolvido por <a href="https://github.com/bloomtpl" target="_blank" rel="noopener noreferrer" className="font-bold hover:text-primary transition-colors">Bloomtpl</a> • Distribuído por <a href="https://themewagon.com" target="_blank" rel="noopener noreferrer" className="font-bold hover:text-primary transition-colors">ThemeWagon</a></p>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <span>© 2026 Borbô. Feito com</span>
+            <Heart className="h-4 w-4 text-red-500 fill-current" />
+            <span>para vestir sua melhor versão.</span>
           </div>
 
           <div className="flex items-center gap-6 text-sm">

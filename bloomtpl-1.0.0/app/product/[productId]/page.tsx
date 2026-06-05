@@ -31,7 +31,7 @@ export default function Product() {
   const [justAdded, setJustAdded] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
 
-  const product = products.find((p) => p.id === parseInt(productId as string));
+  const product = products.find((item) => item.id === Number(productId));
 
   if (!product) {
     return <ProductNotFound />;
@@ -42,7 +42,7 @@ export default function Product() {
 
     await new Promise((resolve) => setTimeout(resolve, 300));
 
-    for (let i = 0; i < quantity; i++) {
+    for (let index = 0; index < quantity; index++) {
       addToCart({
         id: product.id,
         name: product.name,
@@ -65,9 +65,9 @@ export default function Product() {
 
   const handleQuantityChange = (type: "increment" | "decrement") => {
     if (type === "increment") {
-      setQuantity((prev) => prev + 1);
+      setQuantity((current) => current + 1);
     } else if (type === "decrement" && quantity > 1) {
-      setQuantity((prev) => prev - 1);
+      setQuantity((current) => current - 1);
     }
   };
 
@@ -81,7 +81,7 @@ export default function Product() {
             <div className="rounded-xl shadow-lg overflow-hidden mb-4 w-full">
               <Image
                 src={product.image}
-                alt="Selected product"
+                alt={product.name}
                 width={600}
                 height={600}
                 priority
@@ -93,13 +93,19 @@ export default function Product() {
         </div>
 
         <div className="space-y-6">
-          <h1 className="text-3xl lg:text-4xl font-bold text-foreground mb-4">
-            {product.name}
-          </h1>
-          <div className="flex items-center gap-2 mb-4">
+          <div>
+            <p className="mb-2 text-sm font-medium uppercase tracking-widest text-primary">
+              {product.category}
+            </p>
+            <h1 className="text-3xl lg:text-4xl font-bold text-foreground">
+              {product.name}
+            </h1>
+          </div>
+
+          <div className="flex items-center gap-2">
             <div className="flex items-center gap-1">
-              {[...Array(5)].map((_, i) => (
-                <Star key={i} className="h-4 w-4 fill-primary text-primary" />
+              {[...Array(5)].map((_, index) => (
+                <Star key={index} className="h-4 w-4 fill-primary text-primary" />
               ))}
             </div>
             <span className="text-sm text-muted-foreground">
@@ -190,13 +196,13 @@ export default function Product() {
               </Button>
             </div>
 
-            <div className="flex items-center gap-4">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setIsLiked(!isLiked)}
                 className={cn(
-                  "text-muted-foreground hover:text-foreground",
+                  "justify-start text-muted-foreground hover:text-foreground",
                   isLiked && "text-destructive"
                 )}
               >
@@ -209,7 +215,7 @@ export default function Product() {
               <Button
                 variant="ghost"
                 size="sm"
-                className="text-muted-foreground hover:text-foreground"
+                className="justify-start text-muted-foreground hover:text-foreground"
               >
                 <Share2 className="h-4 w-4 mr-2" />
                 Compartilhar

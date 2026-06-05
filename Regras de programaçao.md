@@ -217,3 +217,11 @@ O usuário possui a decisão final sobre qualquer alteração no projeto.
 
 ```
 ```
+
+---
+
+# Regra de Upload de Imagens
+
+* Todo upload de imagem dentro do site deve respeitar o limite máximo de **2 MB por imagem**.
+* A validação de tamanho deve acontecer antes de salvar, enviar ao Storage ou exibir a imagem como definitiva.
+* Imagens acima de 2 MB devem ser recusadas com mensagem clara para o administrador ou cliente.

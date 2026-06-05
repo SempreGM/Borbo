@@ -17,12 +17,12 @@ interface Product {
   category?: string;
 }
 
-export default function ProductCard({ 
-  product, 
-  isAdmin = false 
-}: { 
-  product: Product; 
-  isAdmin?: boolean 
+export default function ProductCard({
+  product,
+  isAdmin = false,
+}: {
+  product: Product;
+  isAdmin?: boolean;
 }) {
   const [isLiked, setIsLiked] = useState(false);
   const [imageError, setImageError] = useState(false);
@@ -31,9 +31,9 @@ export default function ProductCard({
 
   const { addToCart } = useCart();
 
-  const handleAddToCart = async (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
+  const handleAddToCart = async (event: React.MouseEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
 
     setIsAdding(true);
 
@@ -53,9 +53,9 @@ export default function ProductCard({
     setTimeout(() => setJustAdded(false), 2000);
   };
 
-  const handleToggleLike = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
+  const handleToggleLike = (event: React.MouseEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
     setIsLiked(!isLiked);
   };
 
@@ -78,6 +78,12 @@ export default function ProductCard({
               className={cn("h-4 w-4", isLiked && "fill-current")}
             />
           </Button>
+        )}
+
+        {product.category && (
+          <span className="absolute left-3 top-3 z-10 rounded-full bg-white/90 px-3 py-1 text-xs font-medium text-primary shadow-sm">
+            {product.category}
+          </span>
         )}
 
         <Link href={`/product/${product.id}`} className="block relative">
