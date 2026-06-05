@@ -9,7 +9,7 @@ import { formatCurrency } from "@/lib/utils";
 
 interface CartItemProps {
   item: {
-    id: number;
+    id: string | number;
     name: string;
     price: number;
     image: string;

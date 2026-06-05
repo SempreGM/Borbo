@@ -1,15 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/context/AuthContext";
 
 export default function SignUpPage() {
-  const { user, signUp } = useAuth();
+  const { user, signUp, isLoading } = useAuth();
   const router = useRouter();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -20,10 +19,10 @@ export default function SignUpPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    if (user) {
+    if (!isLoading && user) {
       router.replace("/");
     }
-  }, [user, router]);
+  }, [isLoading, user, router]);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -141,7 +140,7 @@ export default function SignUpPage() {
         </form>
 
         <div className="mt-8 text-center text-sm text-muted-foreground">
-          Já tem conta?{' '}
+          Já tem conta?{" "}
           <Link href="/entrar" className="text-primary hover:text-primary/90 font-medium">
             Entrar
           </Link>

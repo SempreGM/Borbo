@@ -11,7 +11,7 @@ export default function ProfilePage() {
   const { user, signOut } = useAuth();
   const router = useRouter();
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
-  
+
   const notifications = [
     {
       id: 1,
@@ -45,7 +45,7 @@ export default function ProfilePage() {
       status: "Entregue",
       items: 3,
       products: [
-        { name: "Vestido Seda Borbô", quantity: 1, price: 169.9 },
+        { name: "Vestido Seda borbô", quantity: 1, price: 169.9 },
         { name: "Blusa Vintage", quantity: 1, price: 89.0 },
         { name: "Acessório Luxo", quantity: 1, price: 91.0 },
       ],
@@ -95,7 +95,8 @@ export default function ProfilePage() {
           </div>
         ) : null}
         <p className="text-muted-foreground mb-8">
-          Bem-vindo de volta, {user.name}. Aqui você pode ver seu perfil e sair da conta.
+          Bem-vindo de volta, {user.name}. Aqui você pode ver seu perfil e sair
+          da conta.
         </p>
 
         <div className="grid gap-6 md:grid-cols-2 mb-8">
@@ -116,15 +117,7 @@ export default function ProfilePage() {
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
-                      <span
-                        className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
-                          notification.status === "Confirmado"
-                            ? "bg-blue-100 text-blue-700"
-                            : notification.status === "Enviado"
-                            ? "bg-yellow-100 text-yellow-700"
-                            : "bg-green-100 text-green-700"
-                        }`}
-                      >
+                      <span className="inline-block px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
                         {notification.status}
                       </span>
                     </div>
@@ -176,6 +169,7 @@ export default function ProfilePage() {
                     </span>
                   </div>
                 </div>
+
                 <div className="mt-4 flex justify-between items-center gap-4 sm:justify-end">
                   <span className="text-sm text-muted-foreground">
                     Clique em "Ver detalhes" para visualizar os itens comprados.
@@ -192,13 +186,14 @@ export default function ProfilePage() {
                     {expandedOrder === order.id ? "Ocultar detalhes" : "Ver detalhes"}
                   </Button>
                 </div>
+
                 {expandedOrder === order.id && (
                   <div className="mt-4 rounded-2xl border border-border bg-slate-50 p-4">
                     <h3 className="text-sm font-semibold text-foreground mb-3">
                       Itens do pedido
                     </h3>
                     <div className="space-y-3">
-                      {(order.products ?? []).map((product) => (
+                      {order.products.map((product) => (
                         <div
                           key={product.name}
                           className="flex flex-col gap-2 rounded-2xl bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between"
@@ -225,11 +220,8 @@ export default function ProfilePage() {
         </div>
 
         <div className="flex flex-col gap-4 sm:flex-row">
-          <Button
-            variant="outline"
-            asChild
-          >
-            <Link href="/">Voltar à loja</Link>
+          <Button variant="outline" asChild>
+            <Link href="/shop">Voltar à loja</Link>
           </Button>
           <Button
             onClick={() => signOut()}

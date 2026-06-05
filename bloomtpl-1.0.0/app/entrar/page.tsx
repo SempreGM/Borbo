@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { useAuth } from "@/context/AuthContext";
 
 export default function SignInPage() {
-  const { user, signIn } = useAuth();
+  const { user, signIn, isLoading } = useAuth();
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -17,10 +17,10 @@ export default function SignInPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    if (user) {
+    if (!isLoading && user) {
       router.replace("/");
     }
-  }, [user, router]);
+  }, [isLoading, user, router]);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -42,12 +42,9 @@ export default function SignInPage() {
     <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-16">
       <div className="mx-auto max-w-2xl rounded-3xl border border-border bg-card p-10 shadow-sm">
         <h1 className="text-3xl font-bold text-foreground mb-2">Entrar</h1>
-        <p className="text-muted-foreground mb-4">
+        <p className="text-muted-foreground mb-8">
           Acesse sua conta para continuar comprando e acompanhar seus pedidos.
         </p>
-        <div className="mb-6 rounded-3xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
-          Use <strong>master@borbo.com</strong> e senha <strong>master123</strong> para login MASTER como dono.
-        </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
@@ -103,7 +100,7 @@ export default function SignInPage() {
         </form>
 
         <div className="mt-8 text-center text-sm text-muted-foreground">
-          Ainda não tem conta?{' '}
+          Ainda não tem conta?{" "}
           <Link href="/cadastrar" className="text-primary hover:text-primary/90 font-medium">
             Criar uma conta
           </Link>

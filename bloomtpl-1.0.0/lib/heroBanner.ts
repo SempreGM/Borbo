@@ -16,7 +16,7 @@ export type HeroBannerSettings = {
 
 export const defaultHeroBannerSettings: HeroBannerSettings = {
   eyebrow: "Coleções leves, descontos especiais e novidades da semana",
-  title: "Vista sua melhor versão com a Borbô",
+  title: "Vista sua melhor versão com a borbô",
   description:
     "Peças femininas elegantes e versáteis para acompanhar sua rotina com conforto, confiança e um toque de sofisticação.",
   primaryButtonLabel: "Ver coleção",
@@ -29,6 +29,7 @@ export function normalizeHeroBannerSettings(
   settings: HeroBannerSettings
 ): HeroBannerSettings {
   return {
+    ...defaultHeroBannerSettings,
     ...settings,
     imageUrls: settings.imageUrls.filter(Boolean).slice(0, 5),
   };

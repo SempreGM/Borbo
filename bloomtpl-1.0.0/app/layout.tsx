@@ -13,9 +13,9 @@ const font = Public_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Borbô | Moda feminina elegante e acessível",
+  title: "borbô | Moda feminina elegante e acessível",
   description:
-    "Borbô é um e-commerce de moda feminina elegante e acessível. Encontre looks modernos, leves e versáteis para vestir sua melhor versão.",
+    "borbô é um e-commerce de moda feminina elegante e acessível. Encontre looks modernos, leves e versáteis para vestir sua melhor versão.",
 };
 
 export default function RootLayout({

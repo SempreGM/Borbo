@@ -1,18 +1,19 @@
 import { Card, CardContent } from "@/components/ui/card";
-import { RotateCcw, Shield, Truck } from "lucide-react";
+import { Headphones, RotateCcw, Truck } from "lucide-react";
 
 export default function Features() {
   const features = [
-    { icon: Truck, title: "Frete Grátis", desc: "Em pedidos acima de R$250" },
-    { icon: Shield, title: "Garantia", desc: "1 ano de garantia" },
-    { icon: RotateCcw, title: "Devolução Fácil", desc: "Até 30 dias para trocar" },
+    { icon: Truck, title: "Frete grátis", desc: "Em pedidos acima de R$250" },
+    { icon: RotateCcw, title: "Devolução fácil", desc: "Até 7 dias após o recebimento" },
+    { icon: Headphones, title: "Atendimento humano", desc: "Suporte próximo para ajudar na sua compra" },
   ];
+
   return (
     <Card className="mb-16">
       <CardContent className="p-8">
         <div className="grid md:grid-cols-3 gap-8">
-          {features.map((feature, index) => (
-            <div key={index} className="flex items-start gap-4">
+          {features.map((feature) => (
+            <div key={feature.title} className="flex items-start gap-4">
               <div className="p-3 bg-primary/10 rounded-lg">
                 <feature.icon className="h-6 w-6 text-primary" />
               </div>

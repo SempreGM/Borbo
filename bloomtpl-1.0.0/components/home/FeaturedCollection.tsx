@@ -1,19 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import productsData from "@/data/products.json";
 import ProductCard from "./ProductCard";
 import { useAuth } from "@/context/AuthContext";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { GripVertical, X } from "lucide-react";
-
-interface FeaturedProduct {
-  id: number;
-  image: string;
-  name: string;
-  price: number;
-  category?: string;
-}
+import {
+  fallbackCatalogProducts,
+  getFeaturedCatalogProducts,
+  type CatalogProduct,
+} from "@/lib/catalog";
 
 interface FeaturedCollectionProps {
   name: string;
@@ -24,13 +20,15 @@ export default function FeaturedCollection({ name, description }: FeaturedCollec
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
 
-  const [products, setProducts] = useState<FeaturedProduct[]>([]);
+  const [products, setProducts] = useState<CatalogProduct[]>([]);
   const [isMounted, setIsMounted] = useState(false);
   const [isModified, setIsModified] = useState(false);
 
   useEffect(() => {
-    setProducts(productsData.slice(0, 3));
-    setIsMounted(true);
+    getFeaturedCatalogProducts(3).then((featuredProducts) => {
+      setProducts(featuredProducts);
+      setIsMounted(true);
+    });
   }, []);
 
   const onDragEnd = (result: DropResult) => {
@@ -45,17 +43,16 @@ export default function FeaturedCollection({ name, description }: FeaturedCollec
   };
 
   const handleSave = () => {
-    console.log("Borbô Admin - Salvando destaque no banco:", products.map((product) => product.id));
+    console.log("borbô Admin - Salvando destaque no banco:", products.map((product) => product.id));
     setIsModified(false);
-    // Integração com Supabase virá aqui.
   };
 
   const handleCancel = () => {
-    setProducts(productsData.slice(0, 3));
+    setProducts(fallbackCatalogProducts.slice(0, 3));
     setIsModified(false);
   };
 
-  const handleRemove = (productId: number) => {
+  const handleRemove = (productId: string | number) => {
     setProducts((current) => current.filter((product) => product.id !== productId));
     setIsModified(true);
   };

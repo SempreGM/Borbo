@@ -1,14 +1,8 @@
 "use client";
 
-import Features from "@/components/product/Features";
-import ProductBreadcrumb from "@/components/product/ProductBreadcrumb";
-import ProductNotFound from "@/components/product/ProductNotFound";
-import RelatedProducts from "@/components/product/RelatedProducts";
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
-import { useCart } from "@/context/CartContext";
-import products from "@/data/products.json";
-import { cn, formatCurrency } from "@/lib/utils";
+import { useEffect, useState } from "react";
+import Image from "next/image";
+import { useParams, useRouter } from "next/navigation";
 import {
   Check,
   Heart,
@@ -18,20 +12,46 @@ import {
   ShoppingCart,
   Star,
 } from "lucide-react";
-import Image from "next/image";
-import { useParams, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useWishlistStore } from "@/components/home/useWishlistStore";
+import Features from "@/components/product/Features";
+import ProductBreadcrumb from "@/components/product/ProductBreadcrumb";
+import ProductNotFound from "@/components/product/ProductNotFound";
+import RelatedProducts from "@/components/product/RelatedProducts";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
+import { useCart } from "@/context/CartContext";
+import { getCatalogProducts, type CatalogProduct } from "@/lib/catalog";
+import { cn, formatCurrency } from "@/lib/utils";
 
 export default function Product() {
   const { addToCart } = useCart();
   const { productId } = useParams();
   const router = useRouter();
+  const [product, setProduct] = useState<CatalogProduct | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [quantity, setQuantity] = useState(1);
   const [isAdding, setIsAdding] = useState(false);
   const [justAdded, setJustAdded] = useState(false);
-  const [isLiked, setIsLiked] = useState(false);
 
-  const product = products.find((item) => item.id === Number(productId));
+  useEffect(() => {
+    getCatalogProducts()
+      .then((products) => {
+        const currentProduct = products.find(
+          (item) => String(item.id) === String(productId)
+        );
+        setProduct(currentProduct ?? null);
+      })
+      .finally(() => setIsLoading(false));
+  }, [productId]);
+
+  const toggleWishlist = useWishlistStore((state) => state.toggleWishlist);
+  const isLiked = useWishlistStore((state) =>
+    product ? state.isInWishlist(product.id) : false
+  );
+
+  if (isLoading) {
+    return null;
+  }
 
   if (!product) {
     return <ProductNotFound />;
@@ -200,7 +220,7 @@ export default function Product() {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => setIsLiked(!isLiked)}
+                onClick={() => toggleWishlist(product)}
                 className={cn(
                   "justify-start text-muted-foreground hover:text-foreground",
                   isLiked && "text-destructive"

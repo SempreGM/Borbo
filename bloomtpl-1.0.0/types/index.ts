@@ -1,6 +1,6 @@
 /**
  * Índice de Tipos TypeScript
- * Borbô - E-commerce de Roupas
+ * borbô - E-commerce de Roupas
  * 
  * Exporta todos os tipos e interfaces do projeto
  */

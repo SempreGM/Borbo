@@ -49,10 +49,10 @@ export default function ShippingPage() {
         setCity(data.localidade || "");
         setState(data.uf || "");
         setFeedback(
-          `Entrega estimada para o CEP ${cep}: 3-5 dias úteis. Valor do frete calculado no checkout.`
+          `Entrega estimada para o CEP ${cep}: 3 a 5 dias úteis. Valor do frete calculado no checkout.`
         );
       }
-    } catch (error) {
+    } catch {
       setFeedback("Não foi possível buscar o CEP no momento. Tente novamente mais tarde.");
     } finally {
       setLoading(false);

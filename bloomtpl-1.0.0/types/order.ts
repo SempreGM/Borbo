@@ -1,6 +1,6 @@
 /**
  * Tipos e Interfaces para Pedidos
- * Borbô - E-commerce de Roupas
+ * borbô - E-commerce de Roupas
  */
 
 import { CartItem } from './cart';

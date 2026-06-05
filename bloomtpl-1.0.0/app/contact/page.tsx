@@ -10,8 +10,8 @@ import {
   CheckCircle,
   Clock,
   Headphones,
+  Instagram,
   Mail,
-  MapPin,
   MessageSquare,
   Phone,
   Send,
@@ -30,14 +30,14 @@ export default function Contact() {
   const [isSubmitted, setIsSubmitted] = useState(false);
 
   const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+    event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    const { name, value } = event.target;
+    setFormData((current) => ({ ...current, [name]: value }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
     setIsSubmitting(true);
 
     await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -53,28 +53,28 @@ export default function Contact() {
 
   const contactInfo = [
     {
+      icon: Instagram,
+      title: "Instagram",
+      details: ["@seja.borbo"],
+      description: "Acompanhe novidades, bastidores e lançamentos",
+    },
+    {
       icon: Mail,
-      title: "Email",
+      title: "E-mail",
       details: ["oi@borbo.com.br", "atendimento@borbo.com.br"],
       description: "Envie sua mensagem a qualquer momento",
     },
     {
       icon: Phone,
       title: "Telefone",
-      details: ["(11) 4000-1234", "(11) 4000-5678"],
-      description: "Seg-Sex, das 9h às 18h",
-    },
-    {
-      icon: MapPin,
-      title: "Nosso endereço",
-      details: ["Rua da Moda, 123", "São Paulo - SP"],
-      description: "Venha nos visitar ou envie uma mensagem",
+      details: ["(11) 4000-1234"],
+      description: "Segunda a sexta, das 9h às 18h",
     },
     {
       icon: Clock,
-      title: "Horário de Atendimento",
-      details: ["Segunda a Sexta: 9h - 18h", "Sábado: 10h - 14h"],
-      description: "Domingo: fechado",
+      title: "Atendimento",
+      details: ["Online para todo o Brasil"],
+      description: "Resposta em até 2 horas úteis",
     },
   ];
 
@@ -87,12 +87,12 @@ export default function Contact() {
     {
       icon: MessageSquare,
       title: "Resposta rápida",
-      description: "Respondemos em até 2 horas úteis",
+      description: "Cuidamos da sua solicitação com proximidade",
     },
     {
       icon: Shield,
       title: "Segurança e privacidade",
-      description: "Seus dados estão protegidos conosco",
+      description: "Seus dados são tratados com cuidado",
     },
   ];
 
@@ -111,8 +111,8 @@ export default function Contact() {
               </span>
             </h1>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Tem dúvida, sugestão ou quer compartilhar algo? Nosso time está
-              aqui para te ajudar.
+              Tem dúvida sobre produto, entrega, troca ou atendimento? Nosso
+              time está aqui para ajudar.
             </p>
           </div>
         </div>
@@ -136,10 +136,7 @@ export default function Contact() {
                   <form onSubmit={handleSubmit} className="space-y-6">
                     <div className="grid sm:grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <label
-                          htmlFor="name"
-                          className="text-sm font-medium text-foreground"
-                        >
+                        <label htmlFor="name" className="text-sm font-medium text-foreground">
                           Seu nome
                         </label>
                         <Input
@@ -155,10 +152,7 @@ export default function Contact() {
                       </div>
 
                       <div className="space-y-2">
-                        <label
-                          htmlFor="email"
-                          className="text-sm font-medium text-foreground"
-                        >
+                        <label htmlFor="email" className="text-sm font-medium text-foreground">
                           Seu e-mail
                         </label>
                         <Input
@@ -175,10 +169,7 @@ export default function Contact() {
                     </div>
 
                     <div className="space-y-2">
-                      <label
-                        htmlFor="subject"
-                        className="text-sm font-medium text-foreground"
-                      >
+                      <label htmlFor="subject" className="text-sm font-medium text-foreground">
                         Assunto
                       </label>
                       <Input
@@ -194,10 +185,7 @@ export default function Contact() {
                     </div>
 
                     <div className="space-y-2">
-                      <label
-                        htmlFor="message"
-                        className="text-sm font-medium text-foreground"
-                      >
+                      <label htmlFor="message" className="text-sm font-medium text-foreground">
                         Sua mensagem
                       </label>
                       <Textarea
@@ -244,12 +232,12 @@ export default function Contact() {
               <Card>
                 <CardHeader>
                   <CardTitle className="text-xl font-semibold">
-                    Contact Information
+                    Canais de atendimento
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                  {contactInfo.map((info, index) => (
-                    <div key={index} className="flex items-start gap-4">
+                  {contactInfo.map((info) => (
+                    <div key={info.title} className="flex items-start gap-4">
                       <div className="p-2 bg-primary/10 rounded-lg">
                         <info.icon className="h-5 w-5 text-primary" />
                       </div>
@@ -257,11 +245,8 @@ export default function Contact() {
                         <h3 className="font-semibold text-foreground mb-1">
                           {info.title}
                         </h3>
-                        {info.details.map((detail, idx) => (
-                          <p
-                            key={idx}
-                            className="text-sm text-muted-foreground"
-                          >
+                        {info.details.map((detail) => (
+                          <p key={detail} className="text-sm text-muted-foreground">
                             {detail}
                           </p>
                         ))}
@@ -282,7 +267,7 @@ export default function Contact() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {features.map((feature, index) => (
-                    <div key={index}>
+                    <div key={feature.title}>
                       <div className="flex items-start gap-3">
                         <div className="p-1 bg-accent/10 rounded">
                           <feature.icon className="h-4 w-4 text-accent-foreground" />
@@ -328,25 +313,25 @@ export default function Contact() {
               {
                 question: "Quais são as políticas de envio?",
                 answer:
-                  "Oferecemos frete grátis para compras acima de R$250. O prazo de entrega padrão é de 3 a 5 dias úteis.",
+                  "Oferecemos frete grátis para compras acima de R$250. O prazo padrão é de 3 a 5 dias úteis.",
               },
               {
                 question: "Como posso rastrear meu pedido?",
                 answer:
-                  "Assim que seu pedido for enviado, você receberá um código de rastreamento por e-mail para acompanhar a entrega.",
+                  "Assim que seu pedido for enviado, você receberá um código de rastreamento por e-mail.",
               },
               {
                 question: "Qual é a política de trocas e devoluções?",
                 answer:
-                  "Aceitamos devoluções em até 30 dias após a compra. Os produtos devem estar em condições originais.",
+                  "Solicitações de devolução podem ser feitas em até 7 dias após o recebimento do pedido.",
               },
               {
-                question: "Vocês fazem entregas internacionais?",
+                question: "Qual é o principal canal de novidades?",
                 answer:
-                  "Sim, entregamos para outros países. O valor do frete internacional varia conforme o destino.",
+                  "O Instagram oficial @seja.borbo reúne lançamentos, bastidores e inspirações de looks.",
               },
-            ].map((faq, index) => (
-              <Card key={index} className="hover:shadow-md transition-shadow">
+            ].map((faq) => (
+              <Card key={faq.question} className="hover:shadow-md transition-shadow">
                 <CardContent className="p-6">
                   <h3 className="font-semibold text-foreground mb-3">
                     {faq.question}
@@ -356,37 +341,6 @@ export default function Contact() {
               </Card>
             ))}
           </div>
-        </div>
-      </section>
-
-      <section className="py-16 lg:py-24">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <Card className="bg-gradient-to-r from-primary/10 to-accent/10 border-primary/20">
-            <CardContent className="p-12 text-center">
-              <h2 className="text-3xl lg:text-4xl font-bold text-foreground mb-4">
-                Ainda tem dúvidas?
-              </h2>
-              <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
-                Não encontrou o que procurava? Nosso atendimento está pronto para
-                ajudar.
-              </p>
-
-              <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <Button
-                  size="lg"
-                  className="bg-primary text-primary-foreground hover:bg-primary/90"
-                >
-                  <Phone className="h-4 w-4 mr-2" />
-                  Ligue para nós
-                </Button>
-
-                <Button size="lg" variant="outline">
-                  <Mail className="h-4 w-4 mr-2" />
-                  Chat ao vivo
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
         </div>
       </section>
     </div>

@@ -16,6 +16,19 @@ import {
   MAX_SITE_IMAGE_UPLOAD_SIZE_LABEL,
   normalizeHeroBannerSettings,
 } from "@/lib/heroBanner";
+import {
+  defaultFooterSettings,
+  FOOTER_SETTINGS_STORAGE_KEY,
+  FooterSettings,
+  normalizeFooterSettings,
+} from "@/lib/footerSettings";
+import {
+  getFooterSettings,
+  getHeroBannerSettings,
+  saveFooterSettings,
+  saveHeroBannerSettings,
+} from "@/services/settings";
+import { uploadImage } from "@/services/storage";
 
 type ProductItem = {
   id: number;
@@ -38,7 +51,7 @@ type Collection = {
 export default function AdminPage() {
   const { user } = useAuth();
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<"produtos" | "colecoes" | "banner" | "notificacoes">("produtos");
+  const [activeTab, setActiveTab] = useState<"produtos" | "colecoes" | "banner" | "rodape" | "notificacoes">("produtos");
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [itemName, setItemName] = useState("");
   const [description, setDescription] = useState("");
@@ -58,6 +71,8 @@ export default function AdminPage() {
   const [bannerImagesText, setBannerImagesText] = useState(defaultHeroBannerSettings.imageUrls.join("\n"));
   const [bannerSaved, setBannerSaved] = useState(false);
   const [bannerUploadError, setBannerUploadError] = useState("");
+  const [footerSettings, setFooterSettings] = useState<FooterSettings>(defaultFooterSettings);
+  const [footerSaved, setFooterSaved] = useState(false);
 
   const notifications = [
     {
@@ -122,21 +137,48 @@ export default function AdminPage() {
   }, [user, router]);
 
   useEffect(() => {
-    const savedBanner = localStorage.getItem(HERO_BANNER_STORAGE_KEY);
+    getHeroBannerSettings()
+      .then((settings) => {
+        setBannerSettings(settings);
+        setBannerImagesText(settings.imageUrls.join("\n"));
+      })
+      .catch(() => {
+        const savedBanner = localStorage.getItem(HERO_BANNER_STORAGE_KEY);
 
-    if (!savedBanner) {
-      return;
-    }
+        if (!savedBanner) {
+          return;
+        }
 
-    try {
-      const parsedBanner = normalizeHeroBannerSettings(
-        JSON.parse(savedBanner) as HeroBannerSettings
-      );
-      setBannerSettings(parsedBanner);
-      setBannerImagesText(parsedBanner.imageUrls.join("\n"));
-    } catch {
-      localStorage.removeItem(HERO_BANNER_STORAGE_KEY);
-    }
+        try {
+          const parsedBanner = normalizeHeroBannerSettings(
+            JSON.parse(savedBanner) as HeroBannerSettings
+          );
+          setBannerSettings(parsedBanner);
+          setBannerImagesText(parsedBanner.imageUrls.join("\n"));
+        } catch {
+          localStorage.removeItem(HERO_BANNER_STORAGE_KEY);
+        }
+      });
+  }, []);
+
+  useEffect(() => {
+    getFooterSettings()
+      .then(setFooterSettings)
+      .catch(() => {
+        const savedFooter = localStorage.getItem(FOOTER_SETTINGS_STORAGE_KEY);
+
+        if (!savedFooter) {
+          return;
+        }
+
+        try {
+          setFooterSettings(
+            normalizeFooterSettings(JSON.parse(savedFooter) as FooterSettings)
+          );
+        } catch {
+          localStorage.removeItem(FOOTER_SETTINGS_STORAGE_KEY);
+        }
+      });
   }, []);
 
   const handleAddCatalogItem = (event: React.FormEvent) => {
@@ -358,7 +400,13 @@ export default function AdminPage() {
 
     try {
       const uploadedImages = await Promise.all(
-        files.slice(0, availableSlots).map(readImageAsDataUrl)
+        files.slice(0, availableSlots).map(async (file) => {
+          try {
+            return await uploadImage(file);
+          } catch {
+            return readImageAsDataUrl(file);
+          }
+        })
       );
       const nextImages = [...currentImages, ...uploadedImages].slice(0, 5);
 
@@ -382,7 +430,7 @@ export default function AdminPage() {
     setBannerSaved(false);
   };
 
-  const handleSaveBanner = (event: React.FormEvent) => {
+  const handleSaveBanner = async (event: React.FormEvent) => {
     event.preventDefault();
 
     const updatedBanner = normalizeHeroBannerSettings({
@@ -393,7 +441,13 @@ export default function AdminPage() {
         .filter(Boolean),
     });
 
-    localStorage.setItem(HERO_BANNER_STORAGE_KEY, JSON.stringify(updatedBanner));
+    try {
+      await saveHeroBannerSettings(updatedBanner);
+      localStorage.removeItem(HERO_BANNER_STORAGE_KEY);
+    } catch {
+      localStorage.setItem(HERO_BANNER_STORAGE_KEY, JSON.stringify(updatedBanner));
+    }
+
     setBannerSettings(updatedBanner);
     setBannerImagesText(updatedBanner.imageUrls.join("\n"));
     setBannerUploadError("");
@@ -402,10 +456,45 @@ export default function AdminPage() {
 
   const handleResetBanner = () => {
     localStorage.removeItem(HERO_BANNER_STORAGE_KEY);
+    void saveHeroBannerSettings(defaultHeroBannerSettings).catch(() => undefined);
     setBannerSettings(defaultHeroBannerSettings);
     setBannerImagesText(defaultHeroBannerSettings.imageUrls.join("\n"));
     setBannerUploadError("");
     setBannerSaved(false);
+  };
+
+  const handleFooterFieldChange = (
+    field: keyof FooterSettings,
+    value: string
+  ) => {
+    setFooterSettings((current) => ({
+      ...current,
+      [field]: value,
+    }));
+    setFooterSaved(false);
+  };
+
+  const handleSaveFooter = async (event: React.FormEvent) => {
+    event.preventDefault();
+
+    const updatedFooter = normalizeFooterSettings(footerSettings);
+
+    try {
+      await saveFooterSettings(updatedFooter);
+      localStorage.removeItem(FOOTER_SETTINGS_STORAGE_KEY);
+    } catch {
+      localStorage.setItem(FOOTER_SETTINGS_STORAGE_KEY, JSON.stringify(updatedFooter));
+    }
+
+    setFooterSettings(updatedFooter);
+    setFooterSaved(true);
+  };
+
+  const handleResetFooter = () => {
+    localStorage.removeItem(FOOTER_SETTINGS_STORAGE_KEY);
+    void saveFooterSettings(defaultFooterSettings).catch(() => undefined);
+    setFooterSettings(defaultFooterSettings);
+    setFooterSaved(false);
   };
 
   if (!user || user.role !== "admin") {
@@ -447,6 +536,12 @@ export default function AdminPage() {
             Banner
           </Button>
           <Button
+            variant={activeTab === "rodape" ? "default" : "outline"}
+            onClick={() => setActiveTab("rodape")}
+          >
+            Rodapé
+          </Button>
+          <Button
             variant={activeTab === "notificacoes" ? "default" : "outline"}
             onClick={() => setActiveTab("notificacoes")}
           >
@@ -480,7 +575,7 @@ export default function AdminPage() {
                       type="text"
                       value={itemName}
                       onChange={(e) => setItemName(e.target.value)}
-                      placeholder="Ex: Vestido Seda Borbô"
+                      placeholder="Ex: Vestido Seda borbô"
                       required
                     />
                   </div>
@@ -804,7 +899,7 @@ export default function AdminPage() {
                     type="text"
                     value={bannerSettings.title}
                     onChange={(event) => handleBannerFieldChange("title", event.target.value)}
-                    placeholder="Vista sua melhor versão com a Borbô"
+                    placeholder="Vista sua melhor versão com a borbô"
                     required
                   />
                 </div>
@@ -958,6 +1053,150 @@ export default function AdminPage() {
                   {bannerSaved ? (
                     <p className="text-sm font-medium text-primary">
                       Banner salvo. Volte para a Home para visualizar.
+                    </p>
+                  ) : null}
+                </div>
+              </form>
+            </div>
+          </div>
+        ) : activeTab === "rodape" ? (
+          <div className="mt-8 space-y-8">
+            <div className="rounded-3xl border border-border bg-background p-6">
+              <div className="mb-6">
+                <h2 className="text-lg font-semibold text-foreground">Rodapé do site</h2>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Edite as informações institucionais do rodapé e mantenha o Instagram como canal principal da marca.
+                </p>
+              </div>
+
+              <form className="space-y-6" onSubmit={handleSaveFooter}>
+                <div>
+                  <label className="text-sm font-medium text-foreground mb-2 block">
+                    Texto institucional da marca
+                  </label>
+                  <Textarea
+                    value={footerSettings.brandDescription}
+                    onChange={(event) => handleFooterFieldChange("brandDescription", event.target.value)}
+                    rows={3}
+                    required
+                  />
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-3">
+                  <div>
+                    <label className="text-sm font-medium text-foreground mb-2 block">
+                      Atendimento/localização
+                    </label>
+                    <Input
+                      type="text"
+                      value={footerSettings.serviceLocation}
+                      onChange={(event) => handleFooterFieldChange("serviceLocation", event.target.value)}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-foreground mb-2 block">
+                      Telefone
+                    </label>
+                    <Input
+                      type="text"
+                      value={footerSettings.phone}
+                      onChange={(event) => handleFooterFieldChange("phone", event.target.value)}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-foreground mb-2 block">
+                      E-mail
+                    </label>
+                    <Input
+                      type="email"
+                      value={footerSettings.email}
+                      onChange={(event) => handleFooterFieldChange("email", event.target.value)}
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium text-foreground mb-2 block">
+                    Link do Instagram
+                  </label>
+                  <Input
+                    type="url"
+                    value={footerSettings.instagramHref}
+                    onChange={(event) => handleFooterFieldChange("instagramHref", event.target.value)}
+                    required
+                  />
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div>
+                    <label className="text-sm font-medium text-foreground mb-2 block">
+                      Título da chamada para Instagram
+                    </label>
+                    <Input
+                      type="text"
+                      value={footerSettings.instagramTitle}
+                      onChange={(event) => handleFooterFieldChange("instagramTitle", event.target.value)}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-foreground mb-2 block">
+                      Texto final do rodapé
+                    </label>
+                    <Input
+                      type="text"
+                      value={footerSettings.copyrightText}
+                      onChange={(event) => handleFooterFieldChange("copyrightText", event.target.value)}
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium text-foreground mb-2 block">
+                    Descrição da chamada para Instagram
+                  </label>
+                  <Textarea
+                    value={footerSettings.instagramDescription}
+                    onChange={(event) => handleFooterFieldChange("instagramDescription", event.target.value)}
+                    rows={3}
+                    required
+                  />
+                </div>
+
+                <div className="rounded-3xl border border-border bg-white p-6">
+                  <p className="text-sm font-semibold text-foreground mb-2">Prévia textual</p>
+                  <h3 className="text-xl font-semibold text-foreground">
+                    {footerSettings.instagramTitle}
+                  </h3>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    {footerSettings.instagramDescription}
+                  </p>
+                  <p className="mt-4 text-sm text-muted-foreground">
+                    {footerSettings.brandDescription}
+                  </p>
+                </div>
+
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex flex-col gap-3 sm:flex-row">
+                    <Button type="submit" className="w-full sm:w-auto">
+                      Salvar rodapé
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleResetFooter}
+                      className="w-full sm:w-auto"
+                    >
+                      Restaurar padrão
+                    </Button>
+                  </div>
+                  {footerSaved ? (
+                    <p className="text-sm font-medium text-primary">
+                      Rodapé salvo. Volte para a Home para visualizar.
                     </p>
                   ) : null}
                 </div>

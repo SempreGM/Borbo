@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Instagram } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -9,7 +10,7 @@ import {
   HeroBannerSettings,
   normalizeHeroBannerSettings,
 } from "@/lib/heroBanner";
-import { useEffect, useState } from "react";
+import { getHeroBannerSettings } from "@/services/settings";
 
 export default function HeroBanner() {
   const [settings, setSettings] = useState<HeroBannerSettings>(
@@ -18,20 +19,24 @@ export default function HeroBanner() {
 
   useEffect(() => {
     const loadSettings = () => {
-      const savedSettings = localStorage.getItem(HERO_BANNER_STORAGE_KEY);
+      getHeroBannerSettings()
+        .then(setSettings)
+        .catch(() => {
+          const savedSettings = localStorage.getItem(HERO_BANNER_STORAGE_KEY);
 
-      if (!savedSettings) {
-        setSettings(defaultHeroBannerSettings);
-        return;
-      }
+          if (!savedSettings) {
+            setSettings(defaultHeroBannerSettings);
+            return;
+          }
 
-      try {
-        const parsedSettings = JSON.parse(savedSettings) as HeroBannerSettings;
-        setSettings(normalizeHeroBannerSettings(parsedSettings));
-      } catch {
-        localStorage.removeItem(HERO_BANNER_STORAGE_KEY);
-        setSettings(defaultHeroBannerSettings);
-      }
+          try {
+            const parsedSettings = JSON.parse(savedSettings) as HeroBannerSettings;
+            setSettings(normalizeHeroBannerSettings(parsedSettings));
+          } catch {
+            localStorage.removeItem(HERO_BANNER_STORAGE_KEY);
+            setSettings(defaultHeroBannerSettings);
+          }
+        });
     };
 
     loadSettings();
@@ -44,11 +49,17 @@ export default function HeroBanner() {
     settings.imageUrls.length > 0
       ? settings.imageUrls
       : defaultHeroBannerSettings.imageUrls;
+  const backgroundGridColumns = {
+    gridTemplateColumns: `repeat(${Math.min(Math.max(imageUrls.length, 1), 5)}, minmax(0, 1fr))`,
+  };
 
   return (
     <section className="relative min-h-[620px] overflow-hidden px-4 py-12 sm:py-16 lg:px-8">
       <div className="absolute inset-0">
-        <div className="grid h-full grid-cols-2 gap-2 opacity-90 sm:grid-cols-3 lg:grid-cols-5">
+        <div
+          className="grid h-full gap-2 opacity-90"
+          style={backgroundGridColumns}
+        >
           {imageUrls.map((imageUrl, index) => (
             <div
               key={`${imageUrl}-${index}`}
@@ -58,7 +69,7 @@ export default function HeroBanner() {
             >
               <img
                 src={imageUrl}
-                alt={`Banner Borbô ${index + 1}`}
+                alt={`Banner borbô ${index + 1}`}
                 className="h-full w-full object-cover"
               />
             </div>

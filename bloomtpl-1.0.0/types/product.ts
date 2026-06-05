@@ -1,6 +1,6 @@
 /**
  * Tipos e Interfaces para Produtos de Moda Feminina
- * Borbô - E-commerce de Roupas
+ * borbô - E-commerce de Roupas
  */
 
 // Tamanhos disponíveis para roupas femininas

@@ -1,45 +1,59 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import productsData from "@/data/products.json";
 import ProductCard from "@/components/home/ProductCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
-
-const allCategories = ["Todos", ...Array.from(new Set(productsData.map((product) => product.category)))];
+import {
+  fallbackCatalogProducts,
+  getCatalogProducts,
+  type CatalogProduct,
+} from "@/lib/catalog";
 
 export default function ShopPage() {
   const [query, setQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("Todos");
+  const [catalogProducts, setCatalogProducts] = useState<CatalogProduct[]>(fallbackCatalogProducts);
 
   useEffect(() => {
     const searchParams = new URLSearchParams(window.location.search);
     setQuery(searchParams.get("q") ?? "");
+    getCatalogProducts().then(setCatalogProducts);
   }, []);
+
+  const allCategories = useMemo(
+    () => [
+      "Todos",
+      ...Array.from(
+        new Set(catalogProducts.map((product) => product.category).filter(Boolean))
+      ),
+    ] as string[],
+    [catalogProducts]
+  );
 
   const products = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
 
-    return productsData.filter((product) => {
+    return catalogProducts.filter((product) => {
       const matchesCategory =
         selectedCategory === "Todos" || product.category === selectedCategory;
       const matchesQuery =
         !normalizedQuery ||
         product.name.toLowerCase().includes(normalizedQuery) ||
         product.description.toLowerCase().includes(normalizedQuery) ||
-        product.category.toLowerCase().includes(normalizedQuery);
+        product.category?.toLowerCase().includes(normalizedQuery);
 
       return matchesCategory && matchesQuery;
     });
-  }, [query, selectedCategory]);
+  }, [catalogProducts, query, selectedCategory]);
 
   return (
     <div className="bg-background">
       <section className="border-b border-border px-4 py-12 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-7xl">
           <p className="text-sm font-medium uppercase tracking-widest text-primary">
-            Loja Borbô
+            Loja borbô
           </p>
           <div className="mt-3 grid gap-6 lg:grid-cols-[1fr_360px] lg:items-end">
             <div>

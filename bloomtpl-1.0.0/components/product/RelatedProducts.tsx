@@ -1,18 +1,9 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import products from "@/data/products.json";
+import { fallbackCatalogProducts, type CatalogProduct } from "@/lib/catalog";
 import Image from "next/image";
 import Link from "next/link";
 import { formatCurrency } from "@/lib/utils";
-
-type CatalogProduct = {
-  id: number;
-  name: string;
-  price: number;
-  category: string;
-  image: string;
-  description: string;
-};
 
 interface RelatedProductsProps {
   product: CatalogProduct;
@@ -31,7 +22,7 @@ export default function RelatedProducts({ product }: RelatedProductsProps) {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        {products
+        {fallbackCatalogProducts
           .filter((relatedProduct) => relatedProduct.id !== product.id)
           .slice(0, 4)
           .map((relatedProduct) => (

@@ -4,13 +4,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useCart } from "@/context/CartContext";
 import { cn, formatCurrency } from "@/lib/utils";
+import { useWishlistStore } from "./useWishlistStore";
 import { Check, Eye, Heart, ShoppingCart } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 
 interface Product {
-  id: number;
+  id: string | number;
   image: string;
   name: string;
   price: number;
@@ -24,12 +25,13 @@ export default function ProductCard({
   product: Product;
   isAdmin?: boolean;
 }) {
-  const [isLiked, setIsLiked] = useState(false);
   const [imageError, setImageError] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
   const [justAdded, setJustAdded] = useState(false);
 
   const { addToCart } = useCart();
+  const toggleWishlist = useWishlistStore((state) => state.toggleWishlist);
+  const isLiked = useWishlistStore((state) => state.isInWishlist(product.id));
 
   const handleAddToCart = async (event: React.MouseEvent) => {
     event.preventDefault();
@@ -56,7 +58,7 @@ export default function ProductCard({
   const handleToggleLike = (event: React.MouseEvent) => {
     event.preventDefault();
     event.stopPropagation();
-    setIsLiked(!isLiked);
+    toggleWishlist(product);
   };
 
   return (

@@ -11,7 +11,7 @@ const orders = [
     status: "Entregue",
     items: 3,
     products: [
-      { name: "Vestido Seda Borbô", quantity: 1, price: 169.9 },
+      { name: "Vestido Seda borbô", quantity: 1, price: 169.9 },
       { name: "Blusa Vintage", quantity: 1, price: 89.0 },
       { name: "Acessório Luxo", quantity: 1, price: 91.0 },
     ],
@@ -59,31 +59,31 @@ export default function OrderDetailsPage({ params }: OrderPageProps) {
     <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-16">
       <div className="mx-auto max-w-3xl rounded-3xl border border-border bg-card p-10 shadow-sm">
         <h1 className="text-3xl font-bold text-foreground mb-2">Detalhes do pedido</h1>
-        <p className="text-muted-foreground mb-8">Informações do pedido {order?.id}</p>
+        <p className="text-muted-foreground mb-8">Informações do pedido {order.id}</p>
 
         <div className="grid gap-6 md:grid-cols-2 mb-8">
           <div className="rounded-3xl border border-border bg-background p-6">
             <h2 className="text-lg font-semibold mb-2">Pedido</h2>
-            <p className="text-foreground">{order?.id}</p>
+            <p className="text-foreground">{order.id}</p>
           </div>
           <div className="rounded-3xl border border-border bg-background p-6">
             <h2 className="text-lg font-semibold mb-2">Status</h2>
-            <p className="text-foreground">{order?.status}</p>
+            <p className="text-foreground">{order.status}</p>
           </div>
           <div className="rounded-3xl border border-border bg-background p-6">
             <h2 className="text-lg font-semibold mb-2">Data</h2>
-            <p className="text-foreground">{order?.date}</p>
+            <p className="text-foreground">{order.date}</p>
           </div>
           <div className="rounded-3xl border border-border bg-background p-6">
             <h2 className="text-lg font-semibold mb-2">Total</h2>
-            <p className="font-semibold text-foreground">{formatCurrency(order?.total)}</p>
+            <p className="font-semibold text-foreground">{formatCurrency(order.total)}</p>
           </div>
         </div>
 
         <div className="rounded-3xl border border-border bg-background p-6 mb-8">
           <h2 className="text-lg font-semibold mb-4">Itens do pedido</h2>
           <div className="space-y-4">
-            {order?.products.map((product) => (
+            {order.products.map((product) => (
               <div key={product.name} className="flex items-center justify-between rounded-2xl border border-border bg-white p-4">
                 <div>
                   <p className="font-semibold text-foreground">{product.name}</p>

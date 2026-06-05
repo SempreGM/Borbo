@@ -1,22 +1,49 @@
 "use client";
 
-import { ArrowRight, Heart, Instagram, Mail, MapPin, Phone } from "lucide-react";
+import { Heart, Instagram, Mail, MapPin, Phone } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "../ui/button";
-import { Input } from "../ui/input";
 import { Separator } from "../ui/separator";
+import {
+  defaultFooterSettings,
+  FOOTER_SETTINGS_STORAGE_KEY,
+  FooterSettings,
+  normalizeFooterSettings,
+} from "@/lib/footerSettings";
+import { getFooterSettings } from "@/services/settings";
 
 export default function Footer() {
-  const [email, setEmail] = useState("");
+  const [settings, setSettings] = useState<FooterSettings>(defaultFooterSettings);
 
-  const handleNewsletterSubmit = (event: React.FormEvent) => {
-    event.preventDefault();
-    if (email) {
-      console.log("Newsletter Borbô:", email);
-      setEmail("");
-    }
-  };
+  useEffect(() => {
+    const loadSettings = () => {
+      getFooterSettings()
+        .then(setSettings)
+        .catch(() => {
+          const savedSettings = localStorage.getItem(FOOTER_SETTINGS_STORAGE_KEY);
+
+          if (!savedSettings) {
+            setSettings(defaultFooterSettings);
+            return;
+          }
+
+          try {
+            setSettings(
+              normalizeFooterSettings(JSON.parse(savedSettings) as FooterSettings)
+            );
+          } catch {
+            localStorage.removeItem(FOOTER_SETTINGS_STORAGE_KEY);
+            setSettings(defaultFooterSettings);
+          }
+        });
+    };
+
+    loadSettings();
+    window.addEventListener("storage", loadSettings);
+
+    return () => window.removeEventListener("storage", loadSettings);
+  }, []);
 
   const footerSections = [
     {
@@ -50,34 +77,25 @@ export default function Footer() {
     <footer className="bg-background border-t border-border">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="py-12 border-b border-border">
-          <div className="max-w-2xl mx-auto text-center">
-            <h3 className="text-2xl font-bold text-foreground mb-4">
-              Fique por dentro
-            </h3>
-            <p className="text-muted-foreground mb-6">
-              Receba novidades, ofertas especiais e inspirações de estilo da
-              Borbô direto no seu e-mail.
-            </p>
-            <form
-              onSubmit={handleNewsletterSubmit}
-              className="flex max-w-md mx-auto gap-2"
-            >
-              <Input
-                type="email"
-                placeholder="Digite seu e-mail"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                className="flex-1"
-                required
-              />
-              <Button
-                type="submit"
-                className="bg-primary text-primary-foreground hover:bg-primary/90"
+          <div className="mx-auto flex max-w-4xl flex-col items-center gap-5 text-center">
+            <Instagram className="h-10 w-10 text-primary" />
+            <div>
+              <h3 className="text-2xl font-bold text-foreground">
+                {settings.instagramTitle}
+              </h3>
+              <p className="mt-3 text-muted-foreground">
+                {settings.instagramDescription}
+              </p>
+            </div>
+            <Button asChild className="bg-primary text-primary-foreground hover:bg-primary/90">
+              <a
+                href={settings.instagramHref}
+                target="_blank"
+                rel="noopener noreferrer"
               >
-                <ArrowRight className="h-4 w-4" />
-                <span className="sr-only">Inscrever-se</span>
-              </Button>
-            </form>
+                Seguir no Instagram
+              </a>
+            </Button>
           </div>
         </div>
 
@@ -87,46 +105,27 @@ export default function Footer() {
               <Link
                 className="text-2xl tracking-tight text-gray-900 hover:text-gray-700 transition-colors"
                 href="/"
-                aria-label="Borbô Home"
+                aria-label="borbô Home"
               >
                 borbô
               </Link>
               <p className="text-muted-foreground mb-6 max-w-sm">
-                Moda feminina leve, elegante e acessível para mulheres que
-                querem expressar personalidade com confiança.
+                {settings.brandDescription}
               </p>
 
               <div className="space-y-3">
                 <div className="flex items-center gap-3 text-sm text-muted-foreground">
                   <MapPin className="h-4 w-4 text-primary" />
-                  <span>Atendimento online para todo o Brasil</span>
+                  <span>{settings.serviceLocation}</span>
                 </div>
                 <div className="flex items-center gap-3 text-sm text-muted-foreground">
                   <Phone className="h-4 w-4 text-primary" />
-                  <span>(11) 4000-1234</span>
+                  <span>{settings.phone}</span>
                 </div>
                 <div className="flex items-center gap-3 text-sm text-muted-foreground">
                   <Mail className="h-4 w-4 text-primary" />
-                  <span>oi@borbo.com.br</span>
+                  <span>{settings.email}</span>
                 </div>
-              </div>
-
-              <div className="flex gap-3 mt-6">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  asChild
-                  className="h-12 w-12 rounded-full bg-muted hover:bg-primary hover:text-primary-foreground transition-colors"
-                >
-                  <a
-                    href="https://www.instagram.com/seja.borbo/"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label="Instagram"
-                  >
-                    <Instagram className="h-6 w-6" />
-                  </a>
-                </Button>
               </div>
             </div>
 
@@ -156,9 +155,8 @@ export default function Footer() {
 
         <div className="py-6 flex flex-col md:flex-row justify-between items-center gap-4">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <span>© 2026 Borbô. Feito com</span>
+            <span>{settings.copyrightText}</span>
             <Heart className="h-4 w-4 text-red-500 fill-current" />
-            <span>para vestir sua melhor versão.</span>
           </div>
 
           <div className="flex items-center gap-6 text-sm">

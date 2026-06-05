@@ -225,3 +225,11 @@ O usuário possui a decisão final sobre qualquer alteração no projeto.
 * Todo upload de imagem dentro do site deve respeitar o limite máximo de **2 MB por imagem**.
 * A validação de tamanho deve acontecer antes de salvar, enviar ao Storage ou exibir a imagem como definitiva.
 * Imagens acima de 2 MB devem ser recusadas com mensagem clara para o administrador ou cliente.
+
+---
+
+# Regra de Nome da Marca
+
+* O nome da loja deve ser escrito sempre em minúsculo: **borbô**.
+* Não utilizar variações como "Borbô", "BORBÔ", "Borbo" ou "BORBO" em textos visíveis da interface.
+* Mesmo no início de frases, títulos, botões, banners, metadados ou áreas administrativas, manter a grafia oficial **borbô**.

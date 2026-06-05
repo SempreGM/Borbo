@@ -1,6 +1,6 @@
 /**
  * Tipos e Interfaces para Carrinho de Compras
- * Borbô - E-commerce de Roupas
+ * borbô - E-commerce de Roupas
  */
 
 import { Product } from './product';

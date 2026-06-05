@@ -2,7 +2,8 @@
 
 import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/context/CartContext";
-import { Bell, Menu, Search, ShoppingCart, User, X } from "lucide-react";
+import { Bell, Heart, Menu, Search, ShoppingCart, User, X } from "lucide-react";
+import { useWishlistStore } from "@/components/home/useWishlistStore";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
@@ -19,6 +20,7 @@ type NotificationItem = {
 export default function Header() {
   const { user, signOut } = useAuth();
   const { cart } = useCart();
+  const wishlistCount = useWishlistStore((state) => state.items.length);
   const cartCount = cart?.reduce((total, item) => total + item.quantity, 0) || 0;
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
@@ -133,7 +135,7 @@ export default function Header() {
             <Link
               className="text-2xl tracking-tight text-gray-900 hover:text-gray-700 transition-colors"
               href="/"
-              aria-label="Borbô Home"
+              aria-label="borbô Home"
             >
               borbô
             </Link>
@@ -188,6 +190,22 @@ export default function Header() {
                 <Menu className="h-6 w-6 text-gray-700" />
               )}
             </button>
+
+            <Link
+              href="/favoritos"
+              className="relative p-2 rounded-full hover:bg-gray-100 transition-all duration-200 group"
+              aria-label={`Favoritos com ${wishlistCount} produtos`}
+            >
+              <Heart className="h-6 w-6 text-gray-700 group-hover:text-gray-900 transition-colors" />
+              {wishlistCount > 0 && (
+                <span
+                  className="absolute -top-1 -right-1 bg-primary text-white text-xs font-bold rounded-full min-w-[20px] h-5 flex items-center justify-center px-1"
+                  aria-label={`${wishlistCount} favoritos`}
+                >
+                  {wishlistCount > 99 ? "99+" : wishlistCount}
+                </span>
+              )}
+            </Link>
 
             <Link
               href="/cart"

@@ -17,14 +17,13 @@ export default function OrderSummary() {
     0
   );
   const shipping = subtotal > 250 ? 0 : 19.9;
-  const tax = subtotal * 0.08;
-  const total = subtotal + shipping + tax;
+  const total = subtotal + shipping;
   const itemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
   return (
     <Card className="sticky top-4">
       <CardHeader>
-        <CardTitle className="text-lg font-semibold">Resumo do Pedido</CardTitle>
+        <CardTitle className="text-lg font-semibold">Resumo do pedido</CardTitle>
       </CardHeader>
 
       <CardContent className="space-y-4">
@@ -47,11 +46,6 @@ export default function OrderSummary() {
                 formatCurrency(shipping)
               )}
             </span>
-          </div>
-
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Imposto</span>
-            <span className="font-medium">{formatCurrency(tax)}</span>
           </div>
 
           <Separator />
@@ -92,15 +86,15 @@ export default function OrderSummary() {
         <div className="space-y-3 pt-4 border-t border-border">
           <div className="flex items-center gap-3 text-sm text-muted-foreground">
             <Shield className="h-4 w-4 text-green-500" />
-            <span>Pagamento seguro com SSL</span>
+            <span>Compra protegida</span>
           </div>
           <div className="flex items-center gap-3 text-sm text-muted-foreground">
             <Truck className="h-4 w-4 text-blue-500" />
-            <span>Devoluções grátis em até 30 dias</span>
+            <span>Devolução em até 7 dias após o recebimento</span>
           </div>
           <div className="flex items-center gap-3 text-sm text-muted-foreground">
             <Heart className="h-4 w-4 text-red-500" />
-            <span>Suporte ao cliente 24/7</span>
+            <span>Atendimento humanizado</span>
           </div>
         </div>
       </CardContent>

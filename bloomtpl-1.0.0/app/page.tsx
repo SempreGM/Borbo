@@ -18,7 +18,7 @@ export default function Home() {
         <div className="mx-auto mb-8 flex max-w-7xl flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-sm font-medium uppercase tracking-widest text-primary">
-              Catálogo Borbô
+              Catálogo borbô
             </p>
             <h2 className="mt-2 text-2xl font-semibold text-foreground">
               Peças para combinar com o seu momento

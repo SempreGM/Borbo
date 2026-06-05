@@ -1,31 +1,29 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import productsData from "@/data/products.json";
 import ProductCard from "./ProductCard";
 import { useAuth } from "@/context/AuthContext";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { GripVertical, X } from "lucide-react";
-
-interface Product {
-  id: number;
-  image: string;
-  name: string;
-  price: number;
-  category?: string;
-}
+import {
+  fallbackCatalogProducts,
+  getCatalogProducts,
+  type CatalogProduct,
+} from "@/lib/catalog";
 
 export default function ProductList() {
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
 
-  const [products, setProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useState<CatalogProduct[]>([]);
   const [isMounted, setIsMounted] = useState(false);
   const [isModified, setIsModified] = useState(false);
 
   useEffect(() => {
-    setProducts(productsData.slice(0, 15));
-    setIsMounted(true);
+    getCatalogProducts(15).then((catalogProducts) => {
+      setProducts(catalogProducts);
+      setIsMounted(true);
+    });
   }, []);
 
   const onDragEnd = (result: DropResult) => {
@@ -40,16 +38,16 @@ export default function ProductList() {
   };
 
   const handleSave = () => {
-    console.log("Borbô Admin - Salvando listagem geral:", products.map((product) => product.id));
+    console.log("borbô Admin - Salvando listagem geral:", products.map((product) => product.id));
     setIsModified(false);
   };
 
   const handleCancel = () => {
-    setProducts(productsData.slice(0, 15));
+    setProducts(fallbackCatalogProducts.slice(0, 15));
     setIsModified(false);
   };
 
-  const handleRemove = (productId: number) => {
+  const handleRemove = (productId: string | number) => {
     setProducts((current) => current.filter((product) => product.id !== productId));
     setIsModified(true);
   };

@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
 interface Product {
-  id: number;
+  id: string | number;
   image: string;
   name: string;
   price: number;
@@ -12,7 +12,7 @@ interface Product {
 interface WishlistState {
   items: Product[];
   toggleWishlist: (product: Product) => void;
-  isInWishlist: (productId: number) => boolean;
+  isInWishlist: (productId: string | number) => boolean;
   clearWishlist: () => void;
 }
 

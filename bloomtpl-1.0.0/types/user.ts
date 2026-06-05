@@ -1,6 +1,6 @@
 /**
  * Tipos e Interfaces para Usuário e Autenticação
- * Borbô - E-commerce de Roupas
+ * borbô - E-commerce de Roupas
  */
 
 // Roles de usuário
@@ -28,7 +28,6 @@ export interface Address {
 
 // Preferências do usuário
 export interface UserPreferences {
-  newsletter: boolean;
   notifications: boolean;
   theme: 'light' | 'dark' | 'auto';
   language: string;
