@@ -20,6 +20,9 @@ type ProductItem = {
 type Collection = {
   id: string;
   name: string;
+  slug: string;
+  image_url: string;
+  is_featured: boolean;
   description: string;
   products: ProductItem[];
 };
@@ -37,6 +40,9 @@ export default function AdminPage() {
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [collectionName, setCollectionName] = useState("");
   const [collectionDescription, setCollectionDescription] = useState("");
+  const [collectionSlug, setCollectionSlug] = useState("");
+  const [collectionImage, setCollectionImage] = useState("");
+  const [isFeatured, setIsFeatured] = useState(false);
   const [selectedProductIds, setSelectedProductIds] = useState<number[]>([]);
   const [collections, setCollections] = useState<Collection[]>([]);
   const [editingCollectionId, setEditingCollectionId] = useState<string | null>(null);
@@ -183,6 +189,9 @@ export default function AdminPage() {
 
     setCollectionName(collection.name);
     setCollectionDescription(collection.description);
+    setCollectionSlug(collection.slug);
+    setCollectionImage(collection.image_url);
+    setIsFeatured(collection.is_featured);
     setSelectedProductIds(collection.products.map((product) => product.id));
     setEditingCollectionId(collectionId);
     setActiveTab("colecoes");
@@ -198,6 +207,9 @@ export default function AdminPage() {
   const handleCancelCollectionEdit = () => {
     setCollectionName("");
     setCollectionDescription("");
+    setCollectionSlug("");
+    setCollectionImage("");
+    setIsFeatured(false);
     setSelectedProductIds([]);
     setEditingCollectionId(null);
   };
@@ -228,6 +240,9 @@ export default function AdminPage() {
             ? {
                 ...collection,
                 name: collectionName,
+                slug: collectionSlug,
+                image_url: collectionImage,
+                is_featured: isFeatured,
                 description: collectionDescription,
                 products: selectedProducts,
               }
@@ -240,6 +255,9 @@ export default function AdminPage() {
         {
           id: `${Date.now()}`,
           name: collectionName,
+          slug: collectionSlug,
+          image_url: collectionImage,
+          is_featured: isFeatured,
           description: collectionDescription,
           products: selectedProducts,
         },
@@ -248,6 +266,9 @@ export default function AdminPage() {
 
     setCollectionName("");
     setCollectionDescription("");
+    setCollectionSlug("");
+    setCollectionImage("");
+    setIsFeatured(false);
     setSelectedProductIds([]);
     setEditingCollectionId(null);
   };
@@ -440,17 +461,56 @@ export default function AdminPage() {
               </p>
 
               <form className="space-y-6" onSubmit={handleCreateCollection}>
+                <div className="grid gap-6 md:grid-cols-2">
+                  <div>
+                    <label className="text-sm font-medium text-foreground mb-2 block">
+                      Nome da coleção
+                    </label>
+                    <Input
+                      type="text"
+                      value={collectionName}
+                      onChange={(e) => setCollectionName(e.target.value)}
+                      placeholder="Ex: Coleção Verão 2026"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-foreground mb-2 block">
+                      Slug (URL)
+                    </label>
+                    <Input
+                      type="text"
+                      value={collectionSlug}
+                      onChange={(e) => setCollectionSlug(e.target.value)}
+                      placeholder="ex: colecao-verao-2026"
+                      required
+                    />
+                  </div>
+                </div>
+
                 <div>
                   <label className="text-sm font-medium text-foreground mb-2 block">
-                    Nome da coleção
+                    URL da Imagem de Capa
                   </label>
                   <Input
                     type="text"
-                    value={collectionName}
-                    onChange={(e) => setCollectionName(e.target.value)}
-                    placeholder="Ex: Coleção Verão 2026"
-                    required
+                    value={collectionImage}
+                    onChange={(e) => setCollectionImage(e.target.value)}
+                    placeholder="https://images.unsplash.com/..."
                   />
+                </div>
+
+                <div className="flex items-center gap-3 py-2">
+                  <input
+                    type="checkbox"
+                    id="isFeatured"
+                    checked={isFeatured}
+                    onChange={(e) => setIsFeatured(e.target.checked)}
+                    className="h-4 w-4 rounded border-border text-primary"
+                  />
+                  <label htmlFor="isFeatured" className="text-sm font-medium text-foreground">
+                    Destacar esta coleção na página inicial
+                  </label>
                 </div>
 
                 <div>
@@ -522,6 +582,11 @@ export default function AdminPage() {
                         <div>
                           <p className="font-semibold text-foreground">{collection.name}</p>
                           <p className="text-sm text-muted-foreground">{collection.description}</p>
+                          {collection.is_featured && (
+                            <span className="mt-2 inline-block rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
+                              Destaque na Home
+                            </span>
+                          )}
                         </div>
                         <p className="text-sm text-muted-foreground">
                           {collection.products.length} produtos

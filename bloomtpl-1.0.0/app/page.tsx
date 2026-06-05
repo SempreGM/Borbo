@@ -1,11 +1,12 @@
 import ProductList from "@/components/home/ProductList";
-import { FeaturedCollection } from "@/components/common/FeaturedCollection";
+import FeaturedCollection from "@/components/home/FeaturedCollection";
 
 export default function Home() {
   return (
     <div className="bg-background min-h-screen">
-      <div className="px-4 py-8 sm:py-12 lg:py-16 lg:px-8">
-        <div className="text-center mx-auto mb-18 space-y-3">
+      {/* Hero Section */}
+      <div className="px-4 py-12 sm:py-16 lg:py-20 lg:px-8">
+        <div className="text-center mx-auto space-y-3">
           <h1 className="text-primary leading-tighter text-4xl font-semibold tracking-tight text-balance lg:leading-[1.1] lg:font-semibold xl:text-5xl xl:tracking-tighter">
             Entre no estilo Borbô
           </h1>
@@ -16,14 +17,15 @@ export default function Home() {
         </div>
       </div>
 
-      <FeaturedCollection
-        title="Coleção Essência"
-        description="Peças que celebram a leveza e a elegância feminina em cada detalhe."
-        imageUrl="https://images.unsplash.com/photo-1490481651871-ab68de25d43d?q=80&w=2070"
-        href="/shop"
+      {/* Seção de Coleção em Destaque */}
+      <FeaturedCollection 
+        name="Coleção Metamorfose" 
+        description="A leveza da seda encontra o design contemporâneo."
       />
 
+      {/* Listagem Geral */}
       <div className="px-4 py-16 lg:px-8">
+        <h3 className="max-w-7xl mx-auto text-xl font-medium mb-8 text-muted-foreground uppercase tracking-widest">Confira tudo</h3>
         <ProductList />
       </div>
     </div>

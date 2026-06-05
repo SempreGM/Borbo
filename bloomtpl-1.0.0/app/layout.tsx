@@ -3,11 +3,11 @@ import Header from "@/components/layout/Header";
 import { CartProvider } from "@/context/CartContext";
 import { AuthProvider } from "@/context/AuthContext";
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Public_Sans } from "next/font/google";
 import "./globals.css";
 
-const inter = Inter({
-  variable: "--font-inter",
+const font = Public_Sans({
+  variable: "--font-sans",
   subsets: ["latin"],
   display: "swap",
 });
@@ -26,7 +26,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${inter.className} font-sans antialiased flex flex-col min-h-screen`}
+        className={`${font.className} font-sans antialiased flex flex-col min-h-screen`}
       >
         <AuthProvider>
           <CartProvider>
