@@ -59,6 +59,7 @@ export default function HeroBanner() {
         <div
           className="grid h-full gap-2 opacity-90"
           style={backgroundGridColumns}
+          aria-hidden="true"
         >
           {imageUrls.map((imageUrl, index) => (
             <div
@@ -67,10 +68,9 @@ export default function HeroBanner() {
                 index % 2 === 0 ? "translate-y-8" : "-translate-y-8"
               }`}
             >
-              <img
-                src={imageUrl}
-                alt={`Banner borbô ${index + 1}`}
-                className="h-full w-full object-cover"
+              <div
+                className="h-full w-full bg-cover bg-center"
+                style={{ backgroundImage: `url(${imageUrl})` }}
               />
             </div>
           ))}
