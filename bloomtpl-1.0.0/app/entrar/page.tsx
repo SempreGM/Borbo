@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { bootstrapMasterAccountAction } from "@/app/actions/bootstrap-master";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/context/AuthContext";
@@ -14,7 +15,9 @@ export default function SignInPage() {
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState("");
+  const [bootstrapMessage, setBootstrapMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isBootstrapping, setIsBootstrapping] = useState(false);
 
   useEffect(() => {
     if (!isLoading && user) {
@@ -36,6 +39,21 @@ export default function SignInPage() {
     }
 
     router.push("/");
+  };
+
+  const handleBootstrapMaster = async () => {
+    setBootstrapMessage("");
+    setIsBootstrapping(true);
+
+    const response = await bootstrapMasterAccountAction();
+
+    setIsBootstrapping(false);
+    setBootstrapMessage(response.message);
+
+    if (response.success) {
+      setEmail("bernardomaia57@gmail.com");
+      setPassword("bernardo57");
+    }
   };
 
   return (
@@ -104,6 +122,27 @@ export default function SignInPage() {
           <Link href="/cadastrar" className="text-primary hover:text-primary/90 font-medium">
             Criar uma conta
           </Link>
+        </div>
+
+        <div className="mt-8 rounded-2xl border border-border bg-background p-4">
+          <p className="text-sm font-medium text-foreground">
+            Acesso master de teste
+          </p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Cria ou atualiza a conta admin local quando o bootstrap estiver habilitado.
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            className="mt-4 w-full"
+            onClick={handleBootstrapMaster}
+            disabled={isBootstrapping}
+          >
+            {isBootstrapping ? "Criando conta..." : "Criar conta master de teste"}
+          </Button>
+          {bootstrapMessage ? (
+            <p className="mt-3 text-sm text-muted-foreground">{bootstrapMessage}</p>
+          ) : null}
         </div>
       </div>
     </div>

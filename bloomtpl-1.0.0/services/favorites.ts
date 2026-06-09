@@ -1,4 +1,29 @@
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import type { ProductRecord } from "./products";
+
+export type FavoriteProduct = {
+  id: string;
+  image: string;
+  name: string;
+  price: number;
+  category?: string;
+};
+
+type FavoriteRow = {
+  product_id: string;
+  created_at: string;
+  products: ProductRecord | null;
+};
+
+function mapFavoriteProduct(product: ProductRecord): FavoriteProduct {
+  return {
+    id: product.id,
+    image: product.images[0] ?? "/images/NoImage.jpg",
+    name: product.name,
+    price: product.price,
+    category: product.category_name ?? undefined,
+  };
+}
 
 export async function listFavorites(userId: string) {
   const supabase = createSupabaseBrowserClient();
@@ -11,7 +36,10 @@ export async function listFavorites(userId: string) {
 
   if (error) throw error;
 
-  return data;
+  return ((data ?? []) as FavoriteRow[])
+    .map((favorite) => favorite.products)
+    .filter((product): product is ProductRecord => Boolean(product))
+    .map(mapFavoriteProduct);
 }
 
 export async function addFavorite(userId: string, productId: string) {
@@ -32,6 +60,14 @@ export async function removeFavorite(userId: string, productId: string) {
     .delete()
     .eq("user_id", userId)
     .eq("product_id", productId);
+
+  if (error) throw error;
+}
+
+export async function clearFavorites(userId: string) {
+  const supabase = createSupabaseBrowserClient();
+
+  const { error } = await supabase.from("favorites").delete().eq("user_id", userId);
 
   if (error) throw error;
 }

@@ -1,11 +1,34 @@
 "use client";
 
+import { ensureCustomerProfileAction } from "@/app/actions/profiles";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import type { Tables } from "@/lib/supabase/types";
 import type { User, UserRole, UserSignIn, UserSignUp } from "@/types/user";
 
 type Profile = Tables<"profiles">;
+
+function translateAuthError(message: string) {
+  const normalizedMessage = message.toLowerCase();
+
+  if (normalizedMessage.includes("password should be at least")) {
+    return "A senha deve ter pelo menos 6 caracteres.";
+  }
+
+  if (normalizedMessage.includes("already registered")) {
+    return "Este e-mail já está cadastrado.";
+  }
+
+  if (normalizedMessage.includes("invalid email")) {
+    return "Informe um e-mail válido.";
+  }
+
+  if (normalizedMessage.includes("signup is disabled")) {
+    return "O cadastro está temporariamente desativado.";
+  }
+
+  return "Não foi possível criar a conta agora.";
+}
 
 function buildUserFromProfile(authUser: SupabaseUser, profile?: Profile | null): User {
   const metadataName =
@@ -70,7 +93,7 @@ export async function getCurrentUser() {
 export async function signInWithEmail(data: UserSignIn) {
   const supabase = createSupabaseBrowserClient();
   const { data: authData, error } = await supabase.auth.signInWithPassword({
-    email: data.email,
+    email: data.email.trim().toLowerCase(),
     password: data.password,
   });
 
@@ -90,8 +113,17 @@ export async function signInWithEmail(data: UserSignIn) {
 
 export async function signUpWithEmail(data: UserSignUp) {
   const supabase = createSupabaseBrowserClient();
+  const email = data.email.trim().toLowerCase();
+
+  if (data.password.length < 6) {
+    return {
+      success: false,
+      message: "A senha deve ter pelo menos 6 caracteres.",
+    };
+  }
+
   const { data: authData, error } = await supabase.auth.signUp({
-    email: data.email,
+    email,
     password: data.password,
     options: {
       data: {
@@ -104,9 +136,7 @@ export async function signUpWithEmail(data: UserSignUp) {
   if (error) {
     return {
       success: false,
-      message: error.message.includes("already registered")
-        ? "Este e-mail já está cadastrado."
-        : "Não foi possível criar a conta agora.",
+      message: translateAuthError(error.message),
     };
   }
 
@@ -117,13 +147,44 @@ export async function signUpWithEmail(data: UserSignUp) {
     };
   }
 
+  const profileResponse = await ensureCustomerProfileAction({
+    userId: authData.user.id,
+    email,
+    name: data.name,
+    phone: data.phone,
+  });
+
+  if (!profileResponse.success) {
+    return {
+      success: false,
+      message: profileResponse.message,
+    };
+  }
+
+  if (!authData.session) {
+    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+      email,
+      password: data.password,
+    });
+
+    if (signInError || !signInData.user) {
+      return {
+        success: true,
+        message: "Cadastro criado. Entre com seu e-mail e senha para acessar sua conta.",
+      };
+    }
+
+    const profile = await getProfile(signInData.user.id);
+    return {
+      success: true,
+      user: buildUserFromProfile(signInData.user, profile),
+    };
+  }
+
   const profile = await getProfile(authData.user.id);
   return {
     success: true,
     user: buildUserFromProfile(authData.user, profile),
-    message: authData.session
-      ? undefined
-      : "Cadastro criado. Confira seu e-mail para confirmar a conta.",
   };
 }
 

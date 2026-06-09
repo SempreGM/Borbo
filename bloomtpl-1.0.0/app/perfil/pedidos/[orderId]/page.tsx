@@ -1,101 +1,217 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/context/AuthContext";
 import { formatCurrency } from "@/lib/utils";
+import {
+  getCustomerOrder,
+  type OrderItemRecord,
+  type OrderRecord,
+} from "@/services/orders";
+import type { Json, OrderStatus, PaymentMethod, PaymentStatus } from "@/lib/supabase/types";
 
-const orders = [
-  {
-    id: "#B-1024",
-    date: "12/05/2026",
-    total: 349.9,
-    status: "Entregue",
-    items: 3,
-    products: [
-      { name: "Vestido Seda borbô", quantity: 1, price: 169.9 },
-      { name: "Blusa Vintage", quantity: 1, price: 89.0 },
-      { name: "Acessório Luxo", quantity: 1, price: 91.0 },
-    ],
-  },
-  {
-    id: "#B-1018",
-    date: "28/04/2026",
-    total: 189.0,
-    status: "Em transporte",
-    items: 2,
-    products: [
-      { name: "Macacão Preto", quantity: 1, price: 129.0 },
-      { name: "Cinto Couro", quantity: 1, price: 60.0 },
-    ],
-  },
-  {
-    id: "#B-1007",
-    date: "14/03/2026",
-    total: 429.5,
-    status: "Entregue",
-    items: 4,
-    products: [
-      { name: "Casaco Elegante", quantity: 1, price: 239.5 },
-      { name: "Calça Alfaiataria", quantity: 1, price: 120.0 },
-      { name: "Meia-Fina", quantity: 2, price: 35.0 },
-    ],
-  },
-];
+type CustomerOrder = OrderRecord & {
+  order_items?: OrderItemRecord[];
+};
 
-interface OrderPageProps {
-  params: {
-    orderId: string;
-  };
-}
+const orderStatusLabels: Record<OrderStatus, string> = {
+  received: "Recebido",
+  pending_payment: "Aguardando pagamento",
+  paid: "Pago",
+  processing: "Em preparo",
+  shipped: "Enviado",
+  delivered: "Entregue",
+  cancelled: "Cancelado",
+};
 
-export default function OrderDetailsPage({ params }: OrderPageProps) {
-  const orderId = decodeURIComponent(params.orderId);
-  const order = orders.find((item) => item.id === orderId);
+const paymentMethodLabels: Record<PaymentMethod, string> = {
+  pix: "Pix",
+  card: "Cartão de crédito",
+  transfer: "Transferência bancária",
+};
 
-  if (!order) {
-    notFound();
+const paymentStatusLabels: Record<PaymentStatus, string> = {
+  pending: "Pendente",
+  approved: "Aprovado",
+  failed: "Recusado",
+  refunded: "Reembolsado",
+};
+
+function formatShippingAddress(address: Json) {
+  if (!address || typeof address !== "object" || Array.isArray(address)) {
+    return "Endereço não informado";
   }
 
-  return (
-    <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-16">
-      <div className="mx-auto max-w-3xl rounded-3xl border border-border bg-card p-10 shadow-sm">
-        <h1 className="text-3xl font-bold text-foreground mb-2">Detalhes do pedido</h1>
-        <p className="text-muted-foreground mb-8">Informações do pedido {order.id}</p>
+  const shippingAddress = address as Record<string, string | undefined>;
+  return [
+    shippingAddress.street,
+    shippingAddress.number,
+    shippingAddress.complement,
+    shippingAddress.neighborhood,
+    shippingAddress.city,
+    shippingAddress.state,
+    shippingAddress.zipCode,
+  ]
+    .filter(Boolean)
+    .join(", ");
+}
 
-        <div className="grid gap-6 md:grid-cols-2 mb-8">
+export default function OrderDetailsPage() {
+  const { user } = useAuth();
+  const router = useRouter();
+  const params = useParams<{ orderId: string }>();
+  const [order, setOrder] = useState<CustomerOrder | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!user) {
+      router.replace("/entrar");
+      return;
+    }
+
+    const orderId = decodeURIComponent(params.orderId);
+    setIsLoading(true);
+    setError("");
+
+    getCustomerOrder(user.id, orderId)
+      .then((customerOrder) => {
+        if (!customerOrder) {
+          setError("Pedido não encontrado.");
+          setOrder(null);
+          return;
+        }
+
+        setOrder(customerOrder as CustomerOrder);
+      })
+      .catch(() => {
+        setError("Não foi possível carregar os detalhes do pedido agora.");
+      })
+      .finally(() => setIsLoading(false));
+  }, [params.orderId, router, user]);
+
+  if (!user) {
+    return null;
+  }
+
+  if (isLoading) {
+    return (
+      <div className="container mx-auto px-4 py-16 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-3xl rounded-3xl border border-border bg-card p-10 shadow-sm">
+          <p className="text-sm text-muted-foreground">Carregando pedido...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !order) {
+    return (
+      <div className="container mx-auto px-4 py-16 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-3xl rounded-3xl border border-border bg-card p-10 shadow-sm">
+          <h1 className="mb-3 text-3xl font-bold text-foreground">Pedido não encontrado</h1>
+          <p className="mb-8 text-muted-foreground">{error || "Não encontramos esse pedido na sua conta."}</p>
+          <Button variant="outline" asChild>
+            <Link href="/perfil">Voltar à minha conta</Link>
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  const itemCount = (order.order_items ?? []).reduce(
+    (total, item) => total + item.quantity,
+    0
+  );
+
+  return (
+    <div className="container mx-auto px-4 py-16 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-4xl rounded-3xl border border-border bg-card p-10 shadow-sm">
+        <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h1 className="mb-2 text-3xl font-bold text-foreground">Detalhes do pedido</h1>
+            <p className="text-muted-foreground">Pedido #{order.order_number}</p>
+          </div>
+          <span className="w-fit rounded-full bg-primary/10 px-3 py-1 text-sm font-medium text-primary">
+            {orderStatusLabels[order.status]}
+          </span>
+        </div>
+
+        <div className="mb-8 grid gap-6 md:grid-cols-2">
           <div className="rounded-3xl border border-border bg-background p-6">
-            <h2 className="text-lg font-semibold mb-2">Pedido</h2>
-            <p className="text-foreground">{order.id}</p>
+            <h2 className="mb-2 text-lg font-semibold">Data</h2>
+            <p className="text-foreground">{new Date(order.created_at).toLocaleString("pt-BR")}</p>
           </div>
           <div className="rounded-3xl border border-border bg-background p-6">
-            <h2 className="text-lg font-semibold mb-2">Status</h2>
-            <p className="text-foreground">{order.status}</p>
+            <h2 className="mb-2 text-lg font-semibold">Itens</h2>
+            <p className="text-foreground">{itemCount} {itemCount === 1 ? "item" : "itens"}</p>
           </div>
           <div className="rounded-3xl border border-border bg-background p-6">
-            <h2 className="text-lg font-semibold mb-2">Data</h2>
-            <p className="text-foreground">{order.date}</p>
+            <h2 className="mb-2 text-lg font-semibold">Pagamento</h2>
+            <p className="text-foreground">
+              {paymentMethodLabels[order.payment_method]} • {paymentStatusLabels[order.payment_status]}
+            </p>
           </div>
           <div className="rounded-3xl border border-border bg-background p-6">
-            <h2 className="text-lg font-semibold mb-2">Total</h2>
+            <h2 className="mb-2 text-lg font-semibold">Total</h2>
             <p className="font-semibold text-foreground">{formatCurrency(order.total)}</p>
           </div>
         </div>
 
-        <div className="rounded-3xl border border-border bg-background p-6 mb-8">
-          <h2 className="text-lg font-semibold mb-4">Itens do pedido</h2>
+        <div className="mb-8 rounded-3xl border border-border bg-background p-6">
+          <h2 className="mb-4 text-lg font-semibold">Itens do pedido</h2>
           <div className="space-y-4">
-            {order.products.map((product) => (
-              <div key={product.name} className="flex items-center justify-between rounded-2xl border border-border bg-white p-4">
+            {(order.order_items ?? []).map((product) => (
+              <div
+                key={product.id}
+                className="flex flex-col gap-3 rounded-2xl border border-border bg-white p-4 sm:flex-row sm:items-center sm:justify-between"
+              >
                 <div>
-                  <p className="font-semibold text-foreground">{product.name}</p>
-                  <p className="text-sm text-muted-foreground">Quantidade: {product.quantity}</p>
+                  <p className="font-semibold text-foreground">{product.product_name}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {product.quantity}x {formatCurrency(product.unit_price)}
+                  </p>
                 </div>
-                <p className="font-semibold text-foreground">{formatCurrency(product.price)}</p>
+                <p className="font-semibold text-foreground">{formatCurrency(product.subtotal)}</p>
               </div>
             ))}
           </div>
         </div>
 
-        <div className="flex flex-col gap-4 sm:flex-row justify-end">
+        <div className="mb-8 grid gap-6 md:grid-cols-2">
+          <div className="rounded-3xl border border-border bg-background p-6">
+            <h2 className="mb-2 text-lg font-semibold">Entrega</h2>
+            <p className="text-sm text-muted-foreground">{formatShippingAddress(order.shipping_address)}</p>
+          </div>
+          <div className="rounded-3xl border border-border bg-background p-6">
+            <h2 className="mb-2 text-lg font-semibold">Resumo</h2>
+            <div className="space-y-2 text-sm text-muted-foreground">
+              <div className="flex justify-between">
+                <span>Subtotal</span>
+                <span>{formatCurrency(order.subtotal)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Frete</span>
+                <span>{order.shipping_cost === 0 ? "Grátis" : formatCurrency(order.shipping_cost)}</span>
+              </div>
+              <div className="flex justify-between font-semibold text-foreground">
+                <span>Total</span>
+                <span>{formatCurrency(order.total)}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {order.notes ? (
+          <div className="mb-8 rounded-3xl border border-border bg-background p-6">
+            <h2 className="mb-2 text-lg font-semibold">Observações</h2>
+            <p className="text-sm text-muted-foreground">{order.notes}</p>
+          </div>
+        ) : null}
+
+        <div className="flex flex-col gap-4 sm:flex-row sm:justify-end">
           <Button variant="outline" asChild>
             <Link href="/perfil">Voltar à minha conta</Link>
           </Button>

@@ -6,6 +6,7 @@ export type CatalogProduct = {
   image: string;
   name: string;
   price: number;
+  stock?: number;
   category?: string;
   description: string;
 };
@@ -25,6 +26,7 @@ export function mapProductRecord(product: ProductRecord): CatalogProduct {
     image: product.images[0] ?? "/images/NoImage.jpg",
     name: product.name,
     price: product.price,
+    stock: product.stock,
     category: product.category_name ?? undefined,
     description: product.description,
   };

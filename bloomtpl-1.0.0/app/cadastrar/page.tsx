@@ -7,15 +7,29 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/context/AuthContext";
 
+const formatPhone = (value: string) => {
+  const digits = value.replace(/\D/g, "").slice(0, 11);
+
+  if (digits.length <= 2) return digits;
+  if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+  if (digits.length <= 10) {
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+  }
+
+  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+};
+
 export default function SignUpPage() {
   const { user, signUp, isLoading } = useAuth();
   const router = useRouter();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [agreeToTerms, setAgreeToTerms] = useState(false);
   const [error, setError] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -27,6 +41,7 @@ export default function SignUpPage() {
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     setError("");
+    setSuccessMessage("");
 
     if (!agreeToTerms) {
       setError("Você deve aceitar os termos para continuar.");
@@ -37,6 +52,7 @@ export default function SignUpPage() {
     const response = await signUp({
       email,
       name,
+      phone,
       password,
       confirmPassword,
       agreeToTerms,
@@ -48,6 +64,13 @@ export default function SignUpPage() {
       return;
     }
 
+    if (response.message) {
+      setSuccessMessage(response.message);
+      setPassword("");
+      setConfirmPassword("");
+      return;
+    }
+
     router.push("/");
   };
 
@@ -56,7 +79,7 @@ export default function SignUpPage() {
       <div className="mx-auto max-w-2xl rounded-3xl border border-border bg-card p-10 shadow-sm">
         <h1 className="text-3xl font-bold text-foreground mb-2">Cadastrar</h1>
         <p className="text-muted-foreground mb-8">
-          Crie sua conta para acumular pedidos, acompanhar entregas e ganhar benefícios.
+          Crie sua conta para acompanhar pedidos, entregas e histórico de compras.
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -83,6 +106,18 @@ export default function SignUpPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
+            />
+          </div>
+
+          <div>
+            <label className="text-sm font-medium text-foreground mb-2 block">
+              Telefone opcional
+            </label>
+            <Input
+              type="tel"
+              placeholder="(11) 99999-9999"
+              value={phone}
+              onChange={(e) => setPhone(formatPhone(e.target.value))}
             />
           </div>
 
@@ -129,6 +164,14 @@ export default function SignUpPage() {
           </div>
 
           {error ? <p className="text-sm text-destructive">{error}</p> : null}
+          {successMessage ? (
+            <div className="rounded-2xl border border-primary/30 bg-primary/10 p-4 text-sm text-primary">
+              {successMessage}{" "}
+              <Link href="/entrar" className="font-semibold underline">
+                Ir para login
+              </Link>
+            </div>
+          ) : null}
 
           <Button
             type="submit"

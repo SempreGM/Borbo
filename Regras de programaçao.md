@@ -228,6 +228,15 @@ O usuário possui a decisão final sobre qualquer alteração no projeto.
 
 ---
 
+# Regra de Pagamento
+
+* Pagamentos reais devem usar somente credenciais da conta oficial da loja/dono do site.
+* NÃ£o utilizar conta pessoal de desenvolvedor para receber pagamentos da loja.
+* Enquanto as credenciais oficiais nÃ£o estiverem configuradas, o checkout deve apenas registrar o pedido com pagamento pendente.
+* Credenciais de pagamento devem ficar somente em variÃ¡veis de ambiente seguras, nunca em cÃ³digo versionado.
+
+---
+
 # Regra de Nome da Marca
 
 * O nome da loja deve ser escrito sempre em minúsculo: **borbô**.

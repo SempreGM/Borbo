@@ -19,11 +19,17 @@ import ProductNotFound from "@/components/product/ProductNotFound";
 import RelatedProducts from "@/components/product/RelatedProducts";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/context/CartContext";
 import { getCatalogProducts, type CatalogProduct } from "@/lib/catalog";
 import { cn, formatCurrency } from "@/lib/utils";
+import {
+  listProductVariants,
+  type ProductVariantRecord,
+} from "@/services/products";
 
 export default function Product() {
+  const { user } = useAuth();
   const { addToCart } = useCart();
   const { productId } = useParams();
   const router = useRouter();
@@ -32,6 +38,10 @@ export default function Product() {
   const [quantity, setQuantity] = useState(1);
   const [isAdding, setIsAdding] = useState(false);
   const [justAdded, setJustAdded] = useState(false);
+  const [variants, setVariants] = useState<ProductVariantRecord[]>([]);
+  const [selectedSize, setSelectedSize] = useState("");
+  const [selectedColor, setSelectedColor] = useState("");
+  const [variantError, setVariantError] = useState("");
 
   useEffect(() => {
     getCatalogProducts()
@@ -40,6 +50,12 @@ export default function Product() {
           (item) => String(item.id) === String(productId)
         );
         setProduct(currentProduct ?? null);
+
+        if (currentProduct && typeof currentProduct.id === "string") {
+          void listProductVariants(currentProduct.id)
+            .then(setVariants)
+            .catch(() => setVariants([]));
+        }
       })
       .finally(() => setIsLoading(false));
   }, [productId]);
@@ -57,14 +73,49 @@ export default function Product() {
     return <ProductNotFound />;
   }
 
+  const sizes = Array.from(new Set(variants.map((variant) => variant.size)));
+  const colors = Array.from(
+    new Set(
+      variants
+        .filter((variant) => !selectedSize || variant.size === selectedSize)
+        .map((variant) => variant.color)
+    )
+  );
+  const selectedVariant =
+    variants.find(
+      (variant) =>
+        variant.size === selectedSize &&
+        variant.color === selectedColor &&
+        variant.active
+    ) ?? null;
+  const hasVariants = variants.length > 0;
+  const maxQuantity = selectedVariant?.stock ?? product.stock ?? 99;
+
   const handleAddToCart = async () => {
+    if (hasVariants && !selectedVariant) {
+      setVariantError("Selecione tamanho e cor antes de adicionar ao carrinho.");
+      return;
+    }
+
+    if (hasVariants && selectedVariant && selectedVariant.stock <= 0) {
+      setVariantError("Essa variação está sem estoque.");
+      return;
+    }
+
     setIsAdding(true);
+    setVariantError("");
 
     await new Promise((resolve) => setTimeout(resolve, 300));
 
     for (let index = 0; index < quantity; index++) {
       addToCart({
         id: product.id,
+        cartKey: selectedVariant
+          ? `${product.id}:${selectedVariant.id}`
+          : String(product.id),
+        variantId: selectedVariant?.id ?? null,
+        size: selectedVariant?.size ?? null,
+        color: selectedVariant?.color ?? null,
         name: product.name,
         price: product.price,
         image: product.image,
@@ -85,7 +136,7 @@ export default function Product() {
 
   const handleQuantityChange = (type: "increment" | "decrement") => {
     if (type === "increment") {
-      setQuantity((current) => current + 1);
+      setQuantity((current) => Math.min(maxQuantity, current + 1));
     } else if (type === "decrement" && quantity > 1) {
       setQuantity((current) => current - 1);
     }
@@ -146,6 +197,74 @@ export default function Product() {
           <Separator />
 
           <div className="space-y-4">
+            {hasVariants ? (
+              <div className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium text-foreground mb-2 block">
+                    Tamanho
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {sizes.map((size) => (
+                      <Button
+                        key={size}
+                        type="button"
+                        variant={selectedSize === size ? "default" : "outline"}
+                        onClick={() => {
+                          setSelectedSize(size);
+                          setSelectedColor("");
+                          setQuantity(1);
+                          setVariantError("");
+                        }}
+                      >
+                        {size}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium text-foreground mb-2 block">
+                    Cor
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {colors.map((color) => {
+                      const variant = variants.find(
+                        (item) => item.size === selectedSize && item.color === color
+                      );
+                      const isDisabled = !selectedSize || !variant || variant.stock <= 0;
+
+                      return (
+                        <Button
+                          key={color}
+                          type="button"
+                          variant={selectedColor === color ? "default" : "outline"}
+                          onClick={() => {
+                            setSelectedColor(color);
+                            setQuantity(1);
+                            setVariantError("");
+                          }}
+                          disabled={isDisabled}
+                        >
+                          {color}
+                        </Button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {selectedVariant ? (
+                  <p className="text-sm text-muted-foreground">
+                    Estoque disponível: {selectedVariant.stock}
+                  </p>
+                ) : null}
+                {variantError ? (
+                  <p className="text-sm font-medium text-destructive">
+                    {variantError}
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
+
             <div>
               <label className="text-sm font-medium text-foreground mb-2 block">
                 Quantidade
@@ -168,6 +287,7 @@ export default function Product() {
                     variant="ghost"
                     size="icon"
                     onClick={() => handleQuantityChange("increment")}
+                    disabled={quantity >= maxQuantity}
                     className="h-10 w-10 rounded-l-none"
                   >
                     <Plus className="h-4 w-4" />
@@ -220,7 +340,7 @@ export default function Product() {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => toggleWishlist(product)}
+                onClick={() => void toggleWishlist(product, user?.id)}
                 className={cn(
                   "justify-start text-muted-foreground hover:text-foreground",
                   isLiked && "text-destructive"
@@ -229,7 +349,7 @@ export default function Product() {
                 <Heart
                   className={cn("h-4 w-4 mr-2", isLiked && "fill-current")}
                 />
-                Adicionar à lista de desejos
+                {isLiked ? "Remover dos favoritos" : "Adicionar aos favoritos"}
               </Button>
 
               <Button

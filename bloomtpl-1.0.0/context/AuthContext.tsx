@@ -12,6 +12,7 @@ import type { User, UserSignIn, UserSignUp } from "@/types/user";
 interface AuthContextValue {
   user: User | null;
   isLoading: boolean;
+  refreshUser: () => Promise<void>;
   signIn: (data: UserSignIn) => Promise<{ success: boolean; message?: string }>;
   signUp: (data: UserSignUp) => Promise<{ success: boolean; message?: string }>;
   signOut: () => void;
@@ -29,6 +30,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       .catch(() => setUser(null))
       .finally(() => setIsLoading(false));
   }, []);
+
+  const refreshUser = async () => {
+    const currentUser = await getCurrentUser();
+    setUser(currentUser);
+  };
 
   const signIn = async (data: UserSignIn) => {
     if (!data.email || !data.password) {
@@ -82,7 +88,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, signIn, signUp, signOut }}>
+    <AuthContext.Provider value={{ user, isLoading, refreshUser, signIn, signUp, signOut }}>
       {children}
     </AuthContext.Provider>
   );

@@ -27,7 +27,7 @@ export default function CartItemList() {
       <CardContent className="space-y-4">
         {cart.map((item, index) => (
           <CartItem
-            key={`${item.id}-${index}`}
+            key={`${item.cartKey ?? item.id}-${index}`}
             item={item}
             isLast={index === cart.length - 1}
           />

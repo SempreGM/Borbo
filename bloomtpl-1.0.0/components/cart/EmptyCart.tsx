@@ -28,7 +28,7 @@ export default function EmptyCart() {
           <div className="flex items-center justify-center gap-6 text-sm text-muted-foreground">
             <div className="flex items-center gap-2">
               <Truck className="h-4 w-4" />
-              Frete grátis acima de R$250
+              Frete informado no checkout
             </div>
             <div className="flex items-center gap-2">
               <Shield className="h-4 w-4" />

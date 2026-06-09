@@ -2,155 +2,105 @@
 
 import { useEffect, useState } from "react";
 import ProductCard from "./ProductCard";
-import { useAuth } from "@/context/AuthContext";
-import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
-import { GripVertical, X } from "lucide-react";
 import {
   fallbackCatalogProducts,
   getFeaturedCatalogProducts,
   type CatalogProduct,
 } from "@/lib/catalog";
+import {
+  listHomeCollections,
+  type CollectionWithProducts,
+} from "@/services/collections";
 
 interface FeaturedCollectionProps {
   name: string;
   description?: string;
 }
 
-export default function FeaturedCollection({ name, description }: FeaturedCollectionProps) {
-  const { user } = useAuth();
-  const isAdmin = user?.role === "admin";
+type HomeCollection = {
+  id: string;
+  name: string;
+  description?: string;
+  highlightLabel: string;
+  products: CatalogProduct[];
+};
 
-  const [products, setProducts] = useState<CatalogProduct[]>([]);
+function mapHomeCollection(collection: CollectionWithProducts): HomeCollection {
+  return {
+    id: collection.id,
+    name: collection.name,
+    description: collection.description ?? undefined,
+    highlightLabel: collection.highlight_label || "Destaque da semana",
+    products: collection.products,
+  };
+}
+
+export default function FeaturedCollection({ name, description }: FeaturedCollectionProps) {
+  const [collections, setCollections] = useState<HomeCollection[]>([]);
   const [isMounted, setIsMounted] = useState(false);
-  const [isModified, setIsModified] = useState(false);
 
   useEffect(() => {
-    getFeaturedCatalogProducts(3).then((featuredProducts) => {
-      setProducts(featuredProducts);
-      setIsMounted(true);
-    });
-  }, []);
+    async function loadCollections() {
+      try {
+        const homeCollections = await listHomeCollections(4);
 
-  const onDragEnd = (result: DropResult) => {
-    if (!result.destination) return;
+        if (homeCollections.length > 0) {
+          setCollections(homeCollections.map(mapHomeCollection));
+          return;
+        }
+      } catch {
+        // Keep the storefront usable before the collections table is configured.
+      }
 
-    const items = Array.from(products);
-    const [reorderedItem] = items.splice(result.source.index, 1);
-    items.splice(result.destination.index, 0, reorderedItem);
+      const featuredProducts = await getFeaturedCatalogProducts(3);
+      setCollections([
+        {
+          id: "fallback-featured",
+          name,
+          description,
+          highlightLabel: "Destaque da semana",
+          products: featuredProducts.length > 0 ? featuredProducts : fallbackCatalogProducts.slice(0, 3),
+        },
+      ]);
+    }
 
-    setProducts(items);
-    setIsModified(true);
-  };
-
-  const handleSave = () => {
-    console.log("borbô Admin - Salvando destaque no banco:", products.map((product) => product.id));
-    setIsModified(false);
-  };
-
-  const handleCancel = () => {
-    setProducts(fallbackCatalogProducts.slice(0, 3));
-    setIsModified(false);
-  };
-
-  const handleRemove = (productId: string | number) => {
-    setProducts((current) => current.filter((product) => product.id !== productId));
-    setIsModified(true);
-  };
+    loadCollections().finally(() => setIsMounted(true));
+  }, [description, name]);
 
   if (!isMounted) return null;
 
   return (
-    <section id="colecao" className="py-12 border-y border-[#ffc4a6]/30 bg-[#ffc4a6]/5 overflow-hidden">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="mb-10 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
-          <div className="text-center lg:text-left">
-            <p className="mb-2 text-sm font-medium uppercase tracking-widest text-primary">
-              Destaque da semana
-            </p>
-            <h2 className="text-3xl font-bold tracking-normal text-[#ec5c8d] sm:text-4xl">
-              {name}
-            </h2>
-            {description && (
-              <p className="mt-2 text-muted-foreground text-lg">{description}</p>
-            )}
-          </div>
-          {isAdmin && (
-            <div className="flex flex-col items-end gap-2">
-              {!isModified ? (
-                <div className="bg-[#ec5c8d]/10 text-[#ec5c8d] px-4 py-2 rounded-full text-[10px] font-bold uppercase tracking-wider border border-[#ec5c8d]/20">
-                  Modo Admin: reorganize a vitrine
-                </div>
-              ) : (
-                <div className="flex gap-2">
-                  <button
-                    onClick={handleSave}
-                    className="bg-[#ec5c8d] text-white px-4 py-2 rounded-full text-xs font-bold hover:bg-[#ec5c8d]/90 shadow-sm transition-all"
-                  >
-                    Salvar ordem
-                  </button>
-                  <button
-                    onClick={handleCancel}
-                    className="bg-white text-muted-foreground border border-border px-4 py-2 rounded-full text-xs font-bold hover:bg-slate-50 transition-all"
-                  >
-                    Cancelar
-                  </button>
-                </div>
-              )}
+    <div id="colecao" className="border-y border-[#ffc4a6]/30 bg-[#ffc4a6]/5">
+      {collections.slice(0, 4).map((collection, index) => (
+        <section
+          key={collection.id}
+          className={index === 0 ? "py-12" : "border-t border-[#ffc4a6]/30 py-12"}
+        >
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+              <div className="text-center lg:text-left">
+                <p className="mb-2 text-sm font-medium uppercase tracking-widest text-primary">
+                  {collection.highlightLabel}
+                </p>
+                <h2 className="text-3xl font-bold tracking-normal text-[#ec5c8d] sm:text-4xl">
+                  {collection.name}
+                </h2>
+                {collection.description && (
+                  <p className="mt-2 text-lg text-muted-foreground">
+                    {collection.description}
+                  </p>
+                )}
+              </div>
             </div>
-          )}
-        </div>
 
-        {isAdmin ? (
-          <DragDropContext onDragEnd={onDragEnd}>
-            <Droppable droppableId="featured-list" direction="vertical">
-              {(provided) => (
-                <div
-                  {...provided.droppableProps}
-                  ref={provided.innerRef}
-                  className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
-                >
-                  {products.map((product, index) => (
-                    <Draggable key={product.id} draggableId={String(product.id)} index={index}>
-                      {(provided, snapshot) => (
-                        <div
-                          ref={provided.innerRef}
-                          {...provided.draggableProps}
-                          className={`relative transition-all ${snapshot.isDragging ? "z-50 scale-105" : ""}`}
-                        >
-                          <div
-                            {...provided.dragHandleProps}
-                            className="absolute top-4 left-4 z-30 p-2 bg-white/90 rounded-full shadow-md cursor-grab active:cursor-grabbing hover:bg-white transition-colors"
-                            title="Segure para mover"
-                          >
-                            <GripVertical className="h-4 w-4 text-[#ec5c8d]" />
-                          </div>
-                          <button
-                            onClick={() => handleRemove(product.id)}
-                            className="absolute top-4 right-4 z-30 p-2 bg-white/90 rounded-full shadow-md hover:bg-rose-50 text-rose-500 transition-colors"
-                            title="Remover da coleção"
-                          >
-                            <X className="h-4 w-4" />
-                          </button>
-                          <div className={snapshot.isDragging ? "opacity-50" : ""}>
-                            <ProductCard product={product} isAdmin={isAdmin} />
-                          </div>
-                        </div>
-                      )}
-                    </Draggable>
-                  ))}
-                  {provided.placeholder}
-                </div>
-              )}
-            </Droppable>
-          </DragDropContext>
-        ) : (
-          <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-            {products.map((product) => (
-              <ProductCard key={product.id} product={product} isAdmin={isAdmin} />
-            ))}
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {collection.products.slice(0, 6).map((product) => (
+                <ProductCard key={product.id} product={product} />
+              ))}
+            </div>
           </div>
-        )}
-      </div>
-    </section>
+        </section>
+      ))}
+    </div>
   );
 }

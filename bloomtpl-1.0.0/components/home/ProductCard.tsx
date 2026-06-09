@@ -2,10 +2,10 @@
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { useCart } from "@/context/CartContext";
+import { useAuth } from "@/context/AuthContext";
 import { cn, formatCurrency } from "@/lib/utils";
 import { useWishlistStore } from "./useWishlistStore";
-import { Check, Eye, Heart, ShoppingCart } from "lucide-react";
+import { Eye, Heart, ShoppingCart } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
@@ -26,39 +26,15 @@ export default function ProductCard({
   isAdmin?: boolean;
 }) {
   const [imageError, setImageError] = useState(false);
-  const [isAdding, setIsAdding] = useState(false);
-  const [justAdded, setJustAdded] = useState(false);
 
-  const { addToCart } = useCart();
+  const { user } = useAuth();
   const toggleWishlist = useWishlistStore((state) => state.toggleWishlist);
   const isLiked = useWishlistStore((state) => state.isInWishlist(product.id));
 
-  const handleAddToCart = async (event: React.MouseEvent) => {
+  const handleToggleLike = async (event: React.MouseEvent) => {
     event.preventDefault();
     event.stopPropagation();
-
-    setIsAdding(true);
-
-    await new Promise((resolve) => setTimeout(resolve, 300));
-
-    addToCart({
-      id: product.id,
-      name: product.name,
-      price: product.price,
-      image: product.image,
-      quantity: 1,
-    });
-
-    setIsAdding(false);
-    setJustAdded(true);
-
-    setTimeout(() => setJustAdded(false), 2000);
-  };
-
-  const handleToggleLike = (event: React.MouseEvent) => {
-    event.preventDefault();
-    event.stopPropagation();
-    toggleWishlist(product);
+    await toggleWishlist(product, user?.id);
   };
 
   return (
@@ -137,31 +113,13 @@ export default function ProductCard({
 
         {!isAdmin && (
           <Button
-            className={cn(
-              "w-full transition-all duration-300",
-              justAdded
-                ? "bg-green-600 text-white hover:bg-green-600"
-                : "bg-primary text-primary-foreground hover:bg-primary/90"
-            )}
-            onClick={handleAddToCart}
-            disabled={isAdding}
+            asChild
+            className="w-full bg-primary text-primary-foreground transition-all duration-300 hover:bg-primary/90"
           >
-            {isAdding ? (
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                Adicionando...
-              </div>
-            ) : justAdded ? (
-              <div className="flex items-center gap-2">
-                <Check className="h-4 w-4" />
-                Adicionado ao carrinho!
-              </div>
-            ) : (
-              <div className="flex items-center gap-2">
+            <Link href={`/product/${product.id}`} className="flex items-center gap-2">
                 <ShoppingCart className="h-4 w-4" />
-                Adicionar ao carrinho
-              </div>
-            )}
+                Escolher opções
+            </Link>
           </Button>
         )}
       </CardContent>

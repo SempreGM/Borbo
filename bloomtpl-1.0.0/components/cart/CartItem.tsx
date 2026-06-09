@@ -10,6 +10,10 @@ import { formatCurrency } from "@/lib/utils";
 interface CartItemProps {
   item: {
     id: string | number;
+    cartKey?: string;
+    variantId?: string | null;
+    size?: string | null;
+    color?: string | null;
     name: string;
     price: number;
     image: string;
@@ -20,6 +24,7 @@ interface CartItemProps {
 
 export default function CartItem({ item, isLast }: CartItemProps) {
   const { removeFromCart, updateQuantity } = useCart();
+  const itemKey = item.cartKey ?? item.id;
 
   return (
     <div>
@@ -43,15 +48,22 @@ export default function CartItem({ item, isLast }: CartItemProps) {
               <p className="text-sm text-muted-foreground mt-1">
                 {formatCurrency(item.price)} cada
               </p>
+              {(item.size || item.color) ? (
+                <p className="text-xs text-muted-foreground mt-1">
+                  {[item.size ? `Tam. ${item.size}` : null, item.color].filter(Boolean).join(" • ")}
+                </p>
+              ) : null}
             </div>
 
             <Button
               variant="ghost"
-              size="icon"
-              onClick={() => removeFromCart(item.id)}
-              className="text-muted-foreground hover:text-destructive h-8 w-8 shrink-0"
+              onClick={() => removeFromCart(itemKey)}
+              className="h-8 shrink-0 gap-2 px-2 text-muted-foreground hover:text-destructive"
+              aria-label={`Remover ${item.name} do carrinho`}
+              title="Remover item"
             >
               <Trash2 className="h-4 w-4" />
+              <span className="hidden text-xs font-medium sm:inline">Remover</span>
             </Button>
           </div>
 
@@ -61,7 +73,7 @@ export default function CartItem({ item, isLast }: CartItemProps) {
                 variant="ghost"
                 size="icon"
                 onClick={() =>
-                  updateQuantity(item.id, Math.max(1, item.quantity - 1))
+                  updateQuantity(itemKey, Math.max(1, item.quantity - 1))
                 }
                 disabled={item.quantity <= 1}
                 className="h-8 w-8 rounded-r-none"
@@ -74,7 +86,7 @@ export default function CartItem({ item, isLast }: CartItemProps) {
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                onClick={() => updateQuantity(itemKey, item.quantity + 1)}
                 className="h-8 w-8 rounded-l-none"
               >
                 <Plus className="h-3 w-3" />

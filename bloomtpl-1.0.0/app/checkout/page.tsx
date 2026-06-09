@@ -1,17 +1,37 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowLeft, CheckCircle, MapPin, PackageCheck } from "lucide-react";
+import {
+  ArrowLeft,
+  CheckCircle,
+  CreditCard,
+  MapPin,
+  PackageCheck,
+  QrCode,
+  Tag,
+  Trash2,
+  X,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
+import { createOrderAction } from "@/app/actions/orders";
 import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/context/CartContext";
 import { formatCurrency } from "@/lib/utils";
-import { createOrder } from "@/services/orders";
+import { updateProfile } from "@/services/profiles";
+import { calculateCouponDiscount, getCouponByCode } from "@/services/coupons";
+import {
+  calculateShippingCost,
+  defaultShippingSettings,
+  normalizeShippingSettings,
+  SHIPPING_SETTINGS_STORAGE_KEY,
+  type ShippingSettings,
+} from "@/lib/shippingSettings";
+import { getShippingSettings } from "@/services/settings";
 import type { PaymentMethod } from "@/lib/supabase/types";
 
 type CheckoutErrors = Partial<Record<
@@ -30,9 +50,32 @@ type CheckoutErrors = Partial<Record<
 
 const paymentLabels: Record<PaymentMethod, string> = {
   pix: "Pix",
-  card: "Cartão de crédito",
+  card: "Cartão de crédito ou débito",
   transfer: "Transferência bancária",
 };
+
+const paymentOptions: Array<{
+  value: PaymentMethod;
+  label: string;
+  description: string;
+  detail: string;
+  icon: typeof QrCode;
+}> = [
+  {
+    value: "pix",
+    label: "Pix",
+    description: "Aprovação rápida",
+    detail: "Código Pix gerado após o pedido.",
+    icon: QrCode,
+  },
+  {
+    value: "card",
+    label: "Cartão",
+    description: "Crédito ou débito",
+    detail: "Crédito em até 12x ou débito à vista.",
+    icon: CreditCard,
+  },
+];
 
 const formatCep = (value: string) => {
   const digits = value.replace(/\D/g, "").slice(0, 8);
@@ -59,9 +102,20 @@ const formatCpf = (value: string) => {
     .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
 };
 
+const isSupabaseProductId = (productId: string | number): productId is string => {
+  return typeof productId === "string" && productId.length >= 30;
+};
+
 export default function CheckoutPage() {
-  const { cart, clearCart } = useCart();
-  const { user } = useAuth();
+  const {
+    cart,
+    clearCart,
+    removeFromCart,
+    appliedCoupon,
+    applyCoupon,
+    clearCoupon,
+  } = useCart();
+  const { user, refreshUser } = useAuth();
   const [name, setName] = useState(user?.name ?? "");
   const [email, setEmail] = useState(user?.email ?? "");
   const [phone, setPhone] = useState(user?.phone ?? "");
@@ -81,13 +135,91 @@ export default function CheckoutPage() {
   const [orderPlaced, setOrderPlaced] = useState(false);
   const [orderId, setOrderId] = useState("");
   const [backendWarning, setBackendWarning] = useState("");
+  const [submitError, setSubmitError] = useState("");
+  const [cepError, setCepError] = useState("");
+  const [couponCode, setCouponCode] = useState("");
+  const [couponMessage, setCouponMessage] = useState("");
+  const [couponError, setCouponError] = useState("");
+  const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
+  const [shippingSettings, setShippingSettings] = useState<ShippingSettings>(
+    defaultShippingSettings
+  );
+
+  useEffect(() => {
+    getShippingSettings()
+      .then(setShippingSettings)
+      .catch(() => {
+        const savedSettings = localStorage.getItem(SHIPPING_SETTINGS_STORAGE_KEY);
+
+        if (!savedSettings) {
+          return;
+        }
+
+        try {
+          setShippingSettings(normalizeShippingSettings(JSON.parse(savedSettings)));
+        } catch {
+          localStorage.removeItem(SHIPPING_SETTINGS_STORAGE_KEY);
+        }
+      });
+  }, []);
 
   const subtotal = useMemo(
     () => cart.reduce((sum, item) => sum + item.price * item.quantity, 0),
     [cart]
   );
-  const shipping = subtotal > 250 ? 0 : 19.9;
-  const total = subtotal + shipping;
+  const discount = useMemo(
+    () => (appliedCoupon ? calculateCouponDiscount(appliedCoupon, subtotal) : 0),
+    [appliedCoupon, subtotal]
+  );
+  const shipping = calculateShippingCost(subtotal, shippingSettings);
+  const total = Math.max(0, subtotal - discount) + shipping;
+  const validationErrorCount = Object.keys(errors).length;
+
+  const handleApplyCoupon = async () => {
+    const normalizedCode = couponCode.trim();
+
+    if (!normalizedCode) {
+      setCouponError("Informe um cupom.");
+      setCouponMessage("");
+      return;
+    }
+
+    setIsApplyingCoupon(true);
+    setCouponError("");
+    setCouponMessage("");
+
+    try {
+      const coupon = await getCouponByCode(normalizedCode);
+
+      if (!coupon) {
+        setCouponError("Cupom não encontrado ou inativo.");
+        return;
+      }
+
+      if (subtotal < coupon.min_purchase) {
+        setCouponError(
+          `Este cupom exige compra mínima de ${formatCurrency(coupon.min_purchase)}.`
+        );
+        return;
+      }
+
+      applyCoupon({
+        id: coupon.id,
+        code: coupon.code,
+        description: coupon.description,
+        discount_type: coupon.discount_type,
+        discount_value: coupon.discount_value,
+        min_purchase: coupon.min_purchase,
+        active: coupon.active,
+      });
+      setCouponCode("");
+      setCouponMessage("Cupom aplicado com sucesso.");
+    } catch {
+      setCouponError("Não foi possível aplicar o cupom agora.");
+    } finally {
+      setIsApplyingCoupon(false);
+    }
+  };
 
   const validateForm = () => {
     const nextErrors: CheckoutErrors = {};
@@ -106,30 +238,56 @@ export default function CheckoutPage() {
     if (!paymentMethod) nextErrors.paymentMethod = "Escolha uma forma de pagamento.";
 
     setErrors(nextErrors);
-    return Object.keys(nextErrors).length === 0;
+    const hasErrors = Object.keys(nextErrors).length > 0;
+
+    if (hasErrors) {
+      setSubmitError("Revise os campos obrigatórios destacados antes de confirmar o pedido.");
+    }
+
+    return !hasErrors;
   };
 
-  const handleCepBlur = async () => {
-    const cepDigits = zipCode.replace(/\D/g, "");
+  const fetchAddressByCep = async (cepValue: string) => {
+    const cepDigits = cepValue.replace(/\D/g, "");
 
     if (cepDigits.length !== 8) {
       return;
     }
 
     setIsFetchingCep(true);
+    setCepError("");
 
     try {
       const response = await fetch(`https://viacep.com.br/ws/${cepDigits}/json/`);
       const data = await response.json();
 
-      if (!data.erro) {
+      if (data.erro) {
+        setCepError("CEP não encontrado. Confira o número informado.");
+        return;
+      }
+
+      if (response.ok) {
         setStreet(data.logradouro || street);
         setNeighborhood(data.bairro || neighborhood);
         setCity(data.localidade || city);
-        setState(data.uf || state);
+        setState(String(data.uf || "").toUpperCase());
       }
+    } catch {
+      setCepError("Não foi possível buscar o CEP agora. Preencha o endereço manualmente.");
     } finally {
       setIsFetchingCep(false);
+    }
+  };
+
+  const handleCepChange = (value: string) => {
+    const formattedCep = formatCep(value);
+    const cepDigits = formattedCep.replace(/\D/g, "");
+
+    setZipCode(formattedCep);
+    setCepError("");
+
+    if (cepDigits.length === 8) {
+      void fetchAddressByCep(formattedCep);
     }
   };
 
@@ -150,8 +308,15 @@ export default function CheckoutPage() {
         },
         paymentMethod,
         notes,
+        coupon: appliedCoupon
+          ? {
+              code: appliedCoupon.code,
+              discount,
+            }
+          : null,
         items: cart,
         subtotal,
+        discount,
         shipping,
         total,
         status: "received",
@@ -169,9 +334,19 @@ export default function CheckoutPage() {
 
     setIsSubmitting(true);
     setBackendWarning("");
+    setSubmitError("");
 
     try {
-      const { order } = await createOrder({
+      const orderNotes = [
+        notes.trim() || null,
+        appliedCoupon && discount > 0
+          ? `Cupom ${appliedCoupon.code} aplicado: -${formatCurrency(discount)}`
+          : null,
+      ]
+        .filter(Boolean)
+        .join("\n");
+
+      const response = await createOrderAction({
         userId: user?.id ?? null,
         customerName: name,
         customerEmail: email,
@@ -187,20 +362,35 @@ export default function CheckoutPage() {
           state,
         },
         paymentMethod,
-        notes: notes || null,
+        notes: orderNotes || null,
         subtotal,
         shippingCost: shipping,
         total,
         items: cart.map((item) => ({
-          productId: null,
-          productName: item.name,
+          productId: isSupabaseProductId(item.id) ? item.id : null,
+          variantId: item.variantId ?? null,
+          productName:
+            item.size || item.color
+              ? `${item.name} (${[item.size ? `Tam. ${item.size}` : null, item.color].filter(Boolean).join(" • ")})`
+              : item.name,
           productImage: item.image,
           unitPrice: item.price,
           quantity: item.quantity,
         })),
       });
 
-      setOrderId(`#${order.order_number}`);
+      if (!response.success || !response.order) {
+        setSubmitError(response.message ?? "Nao foi possivel registrar seu pedido agora.");
+        setIsSubmitting(false);
+        return;
+      }
+
+      setOrderId(`#${response.order.order_number}`);
+
+      if (user?.id && phone.trim() && phone.trim() !== (user.phone ?? "")) {
+        await updateProfile(user.id, { phone: phone.trim() });
+        await refreshUser();
+      }
     } catch {
       const fallbackOrderId = `#B-${Date.now().toString().slice(-6)}`;
       saveLocalFallbackOrder(fallbackOrderId);
@@ -292,6 +482,16 @@ export default function CheckoutPage() {
             <p className="text-muted-foreground mb-6">
               Preencha seus dados para concluir a compra com segurança.
             </p>
+            {submitError ? (
+              <div className="mb-6 rounded-2xl border border-destructive/30 bg-destructive/10 p-4 text-sm font-medium text-destructive">
+                {submitError}
+                {validationErrorCount > 0 ? (
+                  <span className="mt-1 block font-normal">
+                    {validationErrorCount} {validationErrorCount === 1 ? "campo precisa" : "campos precisam"} de atenção.
+                  </span>
+                ) : null}
+              </div>
+            ) : null}
 
             <div className="space-y-8">
               <div>
@@ -370,11 +570,12 @@ export default function CheckoutPage() {
                       type="text"
                       placeholder="00000-000"
                       value={zipCode}
-                      onBlur={handleCepBlur}
-                      onChange={(event) => setZipCode(formatCep(event.target.value))}
+                      onBlur={() => void fetchAddressByCep(zipCode)}
+                      onChange={(event) => handleCepChange(event.target.value)}
                       aria-invalid={Boolean(errors.zipCode)}
                     />
                     {errors.zipCode ? <p className="mt-1 text-xs text-destructive">{errors.zipCode}</p> : null}
+                    {cepError ? <p className="mt-1 text-xs text-destructive">{cepError}</p> : null}
                     {isFetchingCep ? <p className="mt-1 text-xs text-muted-foreground">Buscando CEP...</p> : null}
                   </div>
                   <div>
@@ -466,23 +667,60 @@ export default function CheckoutPage() {
                   Pagamento
                 </h2>
                 <div>
-                  <label className="text-sm font-medium text-foreground mb-2 block">
+                  <p className="text-sm font-medium text-foreground mb-3">
                     Forma de pagamento
-                  </label>
-                  <select
-                    value={paymentMethod}
-                    onChange={(event) => setPaymentMethod(event.target.value as PaymentMethod)}
-                    className="h-12 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                  >
-                    <option value="pix">Pix</option>
-                    <option value="card">Cartão de crédito</option>
-                    <option value="transfer">Transferência bancária</option>
-                  </select>
+                  </p>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    {paymentOptions.map((option) => {
+                      const Icon = option.icon;
+                      const isSelected = paymentMethod === option.value;
+
+                      return (
+                        <button
+                          key={option.value}
+                          type="button"
+                          onClick={() => setPaymentMethod(option.value)}
+                          className={`min-h-[132px] rounded-2xl border p-4 text-left transition-all ${
+                            isSelected
+                              ? "border-primary bg-primary/10 shadow-sm ring-2 ring-primary/20"
+                              : "border-border bg-background hover:border-primary/40 hover:bg-primary/5"
+                          }`}
+                        >
+                          <div className="mb-3 flex items-center justify-between gap-3">
+                            <span
+                              className={`flex h-10 w-10 items-center justify-center rounded-full ${
+                                isSelected
+                                  ? "bg-primary text-primary-foreground"
+                                  : "bg-muted text-foreground"
+                              }`}
+                            >
+                              <Icon className="h-5 w-5" />
+                            </span>
+                            <span
+                              className={`flex h-5 w-5 items-center justify-center rounded-full border ${
+                                isSelected
+                                  ? "border-primary bg-primary text-primary-foreground"
+                                  : "border-border bg-white"
+                              }`}
+                            >
+                              {isSelected ? <CheckCircle className="h-4 w-4" /> : null}
+                            </span>
+                          </div>
+                          <p className="font-semibold text-foreground">{option.label}</p>
+                          <p className="mt-1 text-sm text-muted-foreground">
+                            {option.description}
+                          </p>
+                          <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
+                            {option.detail}
+                          </p>
+                        </button>
+                      );
+                    })}
+                  </div>
                   {errors.paymentMethod ? <p className="mt-1 text-xs text-destructive">{errors.paymentMethod}</p> : null}
                 </div>
-                <p className="mt-3 text-sm text-muted-foreground">
-                  A cobrança real será conectada ao gateway de pagamento na
-                  próxima etapa de integração.
+                <p className="mt-4 rounded-2xl border border-border bg-background p-4 text-sm text-muted-foreground">
+                  A cobrança real será conectada ao gateway de pagamento na próxima etapa de integração.
                 </p>
               </div>
 
@@ -503,18 +741,40 @@ export default function CheckoutPage() {
           <section className="rounded-3xl border border-border bg-card p-8 shadow-sm">
             <h2 className="text-2xl font-semibold text-foreground mb-4">Itens do pedido</h2>
             <div className="space-y-4">
-              {cart.map((item) => (
-                <div key={item.id} className="flex items-center gap-4">
+              {cart.map((item) => {
+                const itemKey = item.cartKey ?? item.id;
+
+                return (
+                <div key={itemKey} className="flex items-center gap-4">
                   <div className="relative h-20 w-20 rounded-3xl overflow-hidden bg-muted">
                     <Image src={item.image} alt={item.name} fill sizes="80px" className="object-cover" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-semibold text-foreground line-clamp-1">{item.name}</p>
+                    {(item.size || item.color) ? (
+                      <p className="text-xs text-muted-foreground">
+                        {[item.size ? `Tam. ${item.size}` : null, item.color].filter(Boolean).join(" • ")}
+                      </p>
+                    ) : null}
                     <p className="text-sm text-muted-foreground">{item.quantity}x • {formatCurrency(item.price)}</p>
                   </div>
-                  <p className="text-sm font-bold text-foreground">{formatCurrency(item.price * item.quantity)}</p>
+                  <div className="flex flex-col items-end gap-2">
+                    <p className="text-sm font-bold text-foreground">{formatCurrency(item.price * item.quantity)}</p>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 gap-2 px-2 text-muted-foreground hover:text-destructive"
+                      onClick={() => removeFromCart(itemKey)}
+                      aria-label={`Remover ${item.name} do pedido`}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      <span className="hidden text-xs font-medium sm:inline">Remover</span>
+                    </Button>
+                  </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           </section>
         </div>
@@ -522,6 +782,71 @@ export default function CheckoutPage() {
         <aside className="space-y-6">
           <div className="sticky top-24 rounded-3xl border border-border bg-card p-8 shadow-sm">
             <h2 className="text-2xl font-semibold text-foreground mb-4">Resumo do pedido</h2>
+
+            <div className="mb-5 rounded-2xl border border-border bg-background p-4">
+              <div className="mb-3 flex items-center gap-2 text-sm font-medium text-foreground">
+                <Tag className="h-4 w-4 text-primary" />
+                Cupom de desconto
+              </div>
+
+              {appliedCoupon ? (
+                <div className="flex items-center justify-between gap-3 rounded-xl bg-primary/10 px-3 py-2">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-primary">
+                      {appliedCoupon.code}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {discount > 0
+                        ? `${formatCurrency(discount)} de desconto`
+                        : "Cupom aguardando valor mínimo"}
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 shrink-0"
+                    onClick={() => {
+                      clearCoupon();
+                      setCouponMessage("");
+                      setCouponError("");
+                    }}
+                    aria-label="Remover cupom"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <Input
+                    value={couponCode}
+                    onChange={(event) => setCouponCode(event.target.value)}
+                    placeholder="Digite o cupom"
+                    className="h-10"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleApplyCoupon}
+                    disabled={isApplyingCoupon}
+                  >
+                    {isApplyingCoupon ? "..." : "Aplicar"}
+                  </Button>
+                </div>
+              )}
+
+              {couponError ? (
+                <p className="mt-2 text-xs font-medium text-destructive">
+                  {couponError}
+                </p>
+              ) : null}
+              {couponMessage ? (
+                <p className="mt-2 text-xs font-medium text-primary">
+                  {couponMessage}
+                </p>
+              ) : null}
+            </div>
+
             <div className="space-y-3 text-sm text-muted-foreground">
               <div className="flex justify-between">
                 <span>Subtotal</span>
@@ -531,6 +856,12 @@ export default function CheckoutPage() {
                 <span>Frete</span>
                 <span>{shipping === 0 ? "Grátis" : formatCurrency(shipping)}</span>
               </div>
+              {discount > 0 ? (
+                <div className="flex justify-between text-primary">
+                  <span>Desconto ({appliedCoupon?.code})</span>
+                  <span>-{formatCurrency(discount)}</span>
+                </div>
+              ) : null}
             </div>
 
             <Separator className="my-4" />
@@ -548,14 +879,21 @@ export default function CheckoutPage() {
               <PackageCheck className="h-4 w-4" />
               {isSubmitting ? "Registrando..." : "Confirmar pedido"}
             </Button>
+            {submitError ? (
+              <div className="mt-3 rounded-2xl border border-destructive/30 bg-destructive/10 p-3 text-sm font-medium text-destructive">
+                {submitError}
+              </div>
+            ) : null}
 
             <div className="mt-6 rounded-2xl border border-border bg-background p-4">
               <h3 className="text-sm font-semibold text-foreground mb-2">
                 Informações de entrega
               </h3>
               <p className="text-sm text-muted-foreground">
-                Frete grátis para pedidos acima de R$250. Prazo de entrega de 3
-                a 5 dias úteis.
+                {shippingSettings.freeShippingEnabled
+                  ? `Frete grátis para pedidos acima de ${formatCurrency(shippingSettings.freeShippingMinPurchase)}. `
+                  : ""}
+                Prazo de entrega de {shippingSettings.deliveryEstimate}.
               </p>
             </div>
           </div>

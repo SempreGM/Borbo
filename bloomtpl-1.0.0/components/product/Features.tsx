@@ -3,7 +3,7 @@ import { Headphones, RotateCcw, Truck } from "lucide-react";
 
 export default function Features() {
   const features = [
-    { icon: Truck, title: "Frete grátis", desc: "Em pedidos acima de R$250" },
+    { icon: Truck, title: "Frete", desc: "Condição exibida no checkout" },
     { icon: RotateCcw, title: "Devolução fácil", desc: "Até 7 dias após o recebimento" },
     { icon: Headphones, title: "Atendimento humano", desc: "Suporte próximo para ajudar na sua compra" },
   ];

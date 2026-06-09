@@ -14,6 +14,7 @@ create type public.order_status as enum (
 );
 create type public.payment_method as enum ('pix', 'card', 'transfer');
 create type public.payment_status as enum ('pending', 'approved', 'failed', 'refunded');
+create type public.coupon_discount_type as enum ('fixed', 'percentage');
 
 create table public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
@@ -44,6 +45,51 @@ create table public.products (
   stock integer not null default 0 check (stock >= 0),
   is_active boolean not null default true,
   is_featured boolean not null default false,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table public.product_variants (
+  id uuid primary key default gen_random_uuid(),
+  product_id uuid not null references public.products(id) on delete cascade,
+  size text not null,
+  color text not null,
+  stock integer not null default 0 check (stock >= 0),
+  active boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (product_id, size, color)
+);
+
+create table public.collections (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  slug text not null unique,
+  description text,
+  image_url text,
+  highlight_label text not null default 'Destaque da semana',
+  is_featured boolean not null default false,
+  active boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table public.collection_products (
+  collection_id uuid not null references public.collections(id) on delete cascade,
+  product_id uuid not null references public.products(id) on delete cascade,
+  order_index integer not null default 0,
+  created_at timestamptz not null default now(),
+  primary key (collection_id, product_id)
+);
+
+create table public.coupons (
+  id uuid primary key default gen_random_uuid(),
+  code text not null unique,
+  description text,
+  discount_type public.coupon_discount_type not null,
+  discount_value numeric(10, 2) not null check (discount_value > 0),
+  min_purchase numeric(10, 2) not null default 0 check (min_purchase >= 0),
+  active boolean not null default true,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -111,6 +157,18 @@ create trigger products_updated_at
 before update on public.products
 for each row execute function public.set_updated_at();
 
+create trigger product_variants_updated_at
+before update on public.product_variants
+for each row execute function public.set_updated_at();
+
+create trigger collections_updated_at
+before update on public.collections
+for each row execute function public.set_updated_at();
+
+create trigger coupons_updated_at
+before update on public.coupons
+for each row execute function public.set_updated_at();
+
 create trigger orders_updated_at
 before update on public.orders
 for each row execute function public.set_updated_at();
@@ -156,6 +214,10 @@ $$;
 alter table public.profiles enable row level security;
 alter table public.categories enable row level security;
 alter table public.products enable row level security;
+alter table public.product_variants enable row level security;
+alter table public.collections enable row level security;
+alter table public.collection_products enable row level security;
+alter table public.coupons enable row level security;
 alter table public.favorites enable row level security;
 alter table public.orders enable row level security;
 alter table public.order_items enable row level security;
@@ -169,6 +231,10 @@ create policy "profiles_update_own_or_admin"
 on public.profiles for update
 using (id = auth.uid() or public.is_admin())
 with check (id = auth.uid() or public.is_admin());
+
+create policy "profiles_insert_own"
+on public.profiles for insert
+with check (id = auth.uid());
 
 create policy "categories_public_read"
 on public.categories for select
@@ -185,6 +251,60 @@ using (is_active = true or public.is_admin());
 
 create policy "products_admin_write"
 on public.products for all
+using (public.is_admin())
+with check (public.is_admin());
+
+create policy "product_variants_public_read_active"
+on public.product_variants for select
+using (
+  public.is_admin()
+  or (
+    active = true
+    and exists (
+    select 1
+    from public.products
+    where products.id = product_variants.product_id
+      and products.is_active = true
+    )
+  )
+);
+
+create policy "product_variants_admin_write"
+on public.product_variants for all
+using (public.is_admin())
+with check (public.is_admin());
+
+create policy "collections_public_read_active"
+on public.collections for select
+using (active = true or public.is_admin());
+
+create policy "collections_admin_write"
+on public.collections for all
+using (public.is_admin())
+with check (public.is_admin());
+
+create policy "collection_products_public_read"
+on public.collection_products for select
+using (
+  exists (
+    select 1
+    from public.collections
+    where collections.id = collection_products.collection_id
+      and (collections.active = true or public.is_admin())
+  )
+);
+
+create policy "collection_products_admin_write"
+on public.collection_products for all
+using (public.is_admin())
+with check (public.is_admin());
+
+create policy "coupons_public_read_active"
+on public.coupons for select
+using (active = true or public.is_admin());
+
+create policy "coupons_admin_write"
+on public.coupons for all
 using (public.is_admin())
 with check (public.is_admin());
 

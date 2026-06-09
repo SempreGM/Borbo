@@ -1,8 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  defaultShippingSettings,
+  normalizeShippingSettings,
+  SHIPPING_SETTINGS_STORAGE_KEY,
+  type ShippingSettings,
+} from "@/lib/shippingSettings";
+import { getShippingSettings } from "@/services/settings";
+import { formatCurrency } from "@/lib/utils";
 
 export default function ShippingPage() {
   const [cep, setCep] = useState("");
@@ -11,6 +19,27 @@ export default function ShippingPage() {
   const [city, setCity] = useState("");
   const [state, setState] = useState("");
   const [loading, setLoading] = useState(false);
+  const [shippingSettings, setShippingSettings] = useState<ShippingSettings>(
+    defaultShippingSettings
+  );
+
+  useEffect(() => {
+    getShippingSettings()
+      .then(setShippingSettings)
+      .catch(() => {
+        const savedSettings = localStorage.getItem(SHIPPING_SETTINGS_STORAGE_KEY);
+
+        if (!savedSettings) {
+          return;
+        }
+
+        try {
+          setShippingSettings(normalizeShippingSettings(JSON.parse(savedSettings)));
+        } catch {
+          localStorage.removeItem(SHIPPING_SETTINGS_STORAGE_KEY);
+        }
+      });
+  }, []);
 
   const formatCep = (value: string) => {
     const digits = value.replace(/\D/g, "").slice(0, 8);
@@ -49,7 +78,7 @@ export default function ShippingPage() {
         setCity(data.localidade || "");
         setState(data.uf || "");
         setFeedback(
-          `Entrega estimada para o CEP ${cep}: 3 a 5 dias úteis. Valor do frete calculado no checkout.`
+          `Entrega estimada para o CEP ${cep}: ${shippingSettings.deliveryEstimate}. Valor do frete calculado no checkout.`
         );
       }
     } catch {
@@ -66,6 +95,12 @@ export default function ShippingPage() {
         <p className="text-muted-foreground mb-6">
           Digite seu CEP para verificar prazos e disponibilidade de entrega.
         </p>
+        <div className="mb-6 rounded-2xl border border-border bg-background p-4 text-sm text-muted-foreground">
+          Frete padrão: {formatCurrency(shippingSettings.baseShippingCost)}.
+          {shippingSettings.freeShippingEnabled
+            ? ` Frete grátis acima de ${formatCurrency(shippingSettings.freeShippingMinPurchase)}.`
+            : " Frete grátis desativado no momento."}
+        </div>
 
         <form onSubmit={handleCheckCep} className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-[1fr_auto]">

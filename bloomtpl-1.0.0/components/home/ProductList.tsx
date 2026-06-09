@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import ProductCard from "./ProductCard";
 import { useAuth } from "@/context/AuthContext";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
-import { GripVertical, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, GripVertical, X } from "lucide-react";
 import {
   fallbackCatalogProducts,
   getCatalogProducts,
@@ -52,6 +52,22 @@ export default function ProductList() {
     setIsModified(true);
   };
 
+  const moveProductStep = (fromIndex: number, direction: -1 | 1) => {
+    const toIndex = fromIndex + direction;
+
+    if (toIndex < 0 || toIndex >= products.length) {
+      return;
+    }
+
+    setProducts((current) => {
+      const items = Array.from(current);
+      const [movedProduct] = items.splice(fromIndex, 1);
+      items.splice(toIndex, 0, movedProduct);
+      return items;
+    });
+    setIsModified(true);
+  };
+
   if (!isMounted) return null;
 
   return (
@@ -75,7 +91,7 @@ export default function ProductList() {
 
       {isAdmin ? (
         <DragDropContext onDragEnd={onDragEnd}>
-          <Droppable droppableId="main-product-list" direction="vertical">
+          <Droppable droppableId="main-product-list" direction="horizontal">
             {(provided) => (
               <div
                 {...provided.droppableProps}
@@ -90,19 +106,43 @@ export default function ProductList() {
                         {...provided.draggableProps}
                         className={`relative ${snapshot.isDragging ? "z-50" : ""}`}
                       >
-                        <div
-                          {...provided.dragHandleProps}
-                          className="absolute top-4 left-4 z-30 p-2 bg-white/90 rounded-full shadow-md cursor-grab active:cursor-grabbing"
-                        >
-                          <GripVertical className="h-4 w-4 text-[#ec5c8d]" />
+                        <div className="absolute bottom-3 left-3 right-3 z-30 flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 rounded-full bg-white/90 p-1 shadow-md backdrop-blur-sm">
+                            <button
+                              type="button"
+                              onClick={() => moveProductStep(index, -1)}
+                              disabled={index === 0}
+                              className="rounded-full p-2 text-[#ec5c8d] transition-colors hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-40"
+                              title="Mover uma posição para trás"
+                            >
+                              <ChevronLeft className="h-4 w-4" />
+                            </button>
+                            <div
+                              {...provided.dragHandleProps}
+                              className="rounded-full p-2 text-[#ec5c8d] cursor-grab transition-colors hover:bg-rose-50 active:cursor-grabbing"
+                              title="Segure para arrastar"
+                            >
+                              <GripVertical className="h-4 w-4" />
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => moveProductStep(index, 1)}
+                              disabled={index === products.length - 1}
+                              className="rounded-full p-2 text-[#ec5c8d] transition-colors hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-40"
+                              title="Mover uma posição para frente"
+                            >
+                              <ChevronRight className="h-4 w-4" />
+                            </button>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleRemove(product.id)}
+                            className="rounded-full bg-white/90 p-2 text-rose-500 shadow-md backdrop-blur-sm transition-colors hover:bg-rose-50"
+                            title="Remover da vitrine"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
                         </div>
-                        <button
-                          onClick={() => handleRemove(product.id)}
-                          className="absolute top-4 right-4 z-30 p-2 bg-white/90 rounded-full shadow-md hover:bg-rose-50 text-rose-500 transition-colors"
-                          title="Remover da vitrine"
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
                         <div className={snapshot.isDragging ? "scale-105 transition-transform" : ""}>
                           <ProductCard product={product} isAdmin={isAdmin} />
                         </div>

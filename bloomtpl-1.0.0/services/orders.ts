@@ -31,6 +31,10 @@ function createOrderNumber() {
   return `B-${Date.now().toString().slice(-8)}`;
 }
 
+function normalizeProductId(productId?: string | null) {
+  return productId && productId.length >= 30 ? productId : null;
+}
+
 export async function createOrder(input: CreateOrderInput) {
   const supabase = createSupabaseBrowserClient();
 
@@ -59,7 +63,7 @@ export async function createOrder(input: CreateOrderInput) {
 
   const orderItems: Inserts<"order_items">[] = input.items.map((item) => ({
     order_id: order.id,
-    product_id: item.productId ?? null,
+    product_id: normalizeProductId(item.productId),
     product_name: item.productName,
     product_image: item.productImage ?? null,
     unit_price: item.unitPrice,
@@ -85,6 +89,22 @@ export async function listCustomerOrders(userId: string) {
     .select("*, order_items(*)")
     .eq("user_id", userId)
     .order("created_at", { ascending: false });
+
+  if (error) throw error;
+
+  return data;
+}
+
+export async function getCustomerOrder(userId: string, orderIdOrNumber: string) {
+  const supabase = createSupabaseBrowserClient();
+  const normalizedOrderId = orderIdOrNumber.replace(/^#/, "");
+
+  const { data, error } = await supabase
+    .from("orders")
+    .select("*, order_items(*)")
+    .eq("user_id", userId)
+    .or(`id.eq.${normalizedOrderId},order_number.eq.${normalizedOrderId}`)
+    .maybeSingle();
 
   if (error) throw error;
 

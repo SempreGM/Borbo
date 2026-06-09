@@ -313,7 +313,7 @@ export default function Contact() {
               {
                 question: "Quais são as políticas de envio?",
                 answer:
-                  "Oferecemos frete grátis para compras acima de R$250. O prazo padrão é de 3 a 5 dias úteis.",
+                  "As condições de frete e prazo são exibidas na página de Frete e confirmadas no checkout.",
               },
               {
                 question: "Como posso rastrear meu pedido?",

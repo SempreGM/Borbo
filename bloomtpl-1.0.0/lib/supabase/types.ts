@@ -17,6 +17,7 @@ export type OrderStatus =
   | "cancelled";
 export type PaymentMethod = "pix" | "card" | "transfer";
 export type PaymentStatus = "pending" | "approved" | "failed" | "refunded";
+export type CouponDiscountType = "fixed" | "percentage";
 
 export type Database = {
   public: {
@@ -100,6 +101,123 @@ export type Database = {
             referencedColumns: ["id"];
           },
         ];
+      };
+      product_variants: {
+        Row: {
+          id: string;
+          product_id: string;
+          size: string;
+          color: string;
+          stock: number;
+          active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          product_id: string;
+          size: string;
+          color: string;
+          stock?: number;
+          active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["product_variants"]["Insert"]>;
+        Relationships: [
+          {
+            foreignKeyName: "product_variants_product_id_fkey";
+            columns: ["product_id"];
+            isOneToOne: false;
+            referencedRelation: "products";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      collections: {
+        Row: {
+          id: string;
+          name: string;
+          slug: string;
+          description: string | null;
+          image_url: string | null;
+          highlight_label: string;
+          is_featured: boolean;
+          active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          slug: string;
+          description?: string | null;
+          image_url?: string | null;
+          highlight_label?: string;
+          is_featured?: boolean;
+          active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["collections"]["Insert"]>;
+        Relationships: [];
+      };
+      collection_products: {
+        Row: {
+          collection_id: string;
+          product_id: string;
+          order_index: number;
+          created_at: string;
+        };
+        Insert: {
+          collection_id: string;
+          product_id: string;
+          order_index?: number;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["collection_products"]["Insert"]>;
+        Relationships: [
+          {
+            foreignKeyName: "collection_products_collection_id_fkey";
+            columns: ["collection_id"];
+            isOneToOne: false;
+            referencedRelation: "collections";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "collection_products_product_id_fkey";
+            columns: ["product_id"];
+            isOneToOne: false;
+            referencedRelation: "products";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      coupons: {
+        Row: {
+          id: string;
+          code: string;
+          description: string | null;
+          discount_type: CouponDiscountType;
+          discount_value: number;
+          min_purchase: number;
+          active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          code: string;
+          description?: string | null;
+          discount_type: CouponDiscountType;
+          discount_value: number;
+          min_purchase?: number;
+          active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["coupons"]["Insert"]>;
+        Relationships: [];
       };
       favorites: {
         Row: {

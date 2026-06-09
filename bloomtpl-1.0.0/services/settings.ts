@@ -10,9 +10,15 @@ import {
   HeroBannerSettings,
   normalizeHeroBannerSettings,
 } from "@/lib/heroBanner";
+import {
+  defaultShippingSettings,
+  normalizeShippingSettings,
+  ShippingSettings,
+} from "@/lib/shippingSettings";
 
 const HERO_BANNER_KEY = "hero_banner";
 const FOOTER_SETTINGS_KEY = "footer_settings";
+const SHIPPING_SETTINGS_KEY = "shipping_settings";
 
 async function getSetting<T>(key: string, fallback: T) {
   const supabase = createSupabaseBrowserClient();
@@ -70,4 +76,20 @@ export async function getFooterSettings() {
 
 export async function saveFooterSettings(settings: FooterSettings) {
   return saveSetting(FOOTER_SETTINGS_KEY, normalizeFooterSettings(settings) as Json);
+}
+
+export async function getShippingSettings() {
+  const settings = await getSetting<Partial<ShippingSettings>>(
+    SHIPPING_SETTINGS_KEY,
+    defaultShippingSettings
+  );
+
+  return normalizeShippingSettings(settings);
+}
+
+export async function saveShippingSettings(settings: ShippingSettings) {
+  return saveSetting(
+    SHIPPING_SETTINGS_KEY,
+    normalizeShippingSettings(settings) as unknown as Json
+  );
 }
