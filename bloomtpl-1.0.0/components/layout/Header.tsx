@@ -11,7 +11,7 @@ import { Button } from "../ui/button";
 
 const navItems = [
   { href: "/shop", label: "Loja" },
-  { href: "/#colecao", label: "Colecao" },
+  { href: "/#colecao", label: "Coleção" },
   { href: "/#sobre", label: "Sobre" },
   { href: "/#contato", label: "Contato" },
 ];

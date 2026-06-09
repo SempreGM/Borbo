@@ -28,6 +28,8 @@ import {
   type ProductVariantRecord,
 } from "@/services/products";
 
+const STANDARD_SIZES = ["PP", "P", "M", "G", "GG"];
+
 export default function Product() {
   const { user } = useAuth();
   const { addToCart } = useCart();
@@ -73,32 +75,30 @@ export default function Product() {
     return <ProductNotFound />;
   }
 
-  const sizes = Array.from(new Set(variants.map((variant) => variant.size)));
-  const colors = Array.from(
-    new Set(
-      variants
-        .filter((variant) => !selectedSize || variant.size === selectedSize)
-        .map((variant) => variant.color)
-    )
-  );
+  const colors = Array.from(new Set(variants.map((variant) => variant.color)));
   const selectedVariant =
     variants.find(
       (variant) =>
-        variant.size === selectedSize &&
         variant.color === selectedColor &&
         variant.active
     ) ?? null;
   const hasVariants = variants.length > 0;
   const maxQuantity = selectedVariant?.stock ?? product.stock ?? 99;
+  const mainImage = selectedVariant?.image_url ?? product.image;
 
   const handleAddToCart = async () => {
+    if (!selectedSize) {
+      setVariantError("Selecione um tamanho antes de adicionar ao carrinho.");
+      return;
+    }
+
     if (hasVariants && !selectedVariant) {
-      setVariantError("Selecione tamanho e cor antes de adicionar ao carrinho.");
+      setVariantError("Selecione uma cor antes de adicionar ao carrinho.");
       return;
     }
 
     if (hasVariants && selectedVariant && selectedVariant.stock <= 0) {
-      setVariantError("Essa variação está sem estoque.");
+      setVariantError("Essa cor está sem estoque.");
       return;
     }
 
@@ -111,14 +111,14 @@ export default function Product() {
       addToCart({
         id: product.id,
         cartKey: selectedVariant
-          ? `${product.id}:${selectedVariant.id}`
-          : String(product.id),
+          ? `${product.id}:${selectedVariant.id}:${selectedSize}`
+          : `${product.id}:${selectedSize}`,
         variantId: selectedVariant?.id ?? null,
-        size: selectedVariant?.size ?? null,
+        size: selectedSize,
         color: selectedVariant?.color ?? null,
         name: product.name,
         price: product.price,
-        image: product.image,
+        image: mainImage,
         quantity: 1,
       });
     }
@@ -151,7 +151,7 @@ export default function Product() {
           <div className="w-full max-w-[500px] mx-auto flex flex-col items-center px-4">
             <div className="rounded-xl shadow-lg overflow-hidden mb-4 w-full">
               <Image
-                src={product.image}
+                src={mainImage}
                 alt={product.name}
                 width={600}
                 height={600}
@@ -197,31 +197,31 @@ export default function Product() {
           <Separator />
 
           <div className="space-y-4">
-            {hasVariants ? (
-              <div className="space-y-4">
-                <div>
-                  <label className="text-sm font-medium text-foreground mb-2 block">
-                    Tamanho
-                  </label>
-                  <div className="flex flex-wrap gap-2">
-                    {sizes.map((size) => (
-                      <Button
-                        key={size}
-                        type="button"
-                        variant={selectedSize === size ? "default" : "outline"}
-                        onClick={() => {
-                          setSelectedSize(size);
-                          setSelectedColor("");
-                          setQuantity(1);
-                          setVariantError("");
-                        }}
-                      >
-                        {size}
-                      </Button>
-                    ))}
-                  </div>
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium text-foreground mb-2 block">
+                  Tamanho
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {STANDARD_SIZES.map((size) => (
+                    <Button
+                      key={size}
+                      type="button"
+                      variant={selectedSize === size ? "default" : "outline"}
+                      onClick={() => {
+                        setSelectedSize(size);
+                        setQuantity(1);
+                        setVariantError("");
+                      }}
+                    >
+                      {size}
+                    </Button>
+                  ))}
                 </div>
+              </div>
 
+              {hasVariants ? (
+                <>
                 <div>
                   <label className="text-sm font-medium text-foreground mb-2 block">
                     Cor
@@ -229,9 +229,9 @@ export default function Product() {
                   <div className="flex flex-wrap gap-2">
                     {colors.map((color) => {
                       const variant = variants.find(
-                        (item) => item.size === selectedSize && item.color === color
+                        (item) => item.color === color
                       );
-                      const isDisabled = !selectedSize || !variant || variant.stock <= 0;
+                      const isDisabled = !variant || variant.stock <= 0;
 
                       return (
                         <Button
@@ -257,13 +257,14 @@ export default function Product() {
                     Estoque disponível: {selectedVariant.stock}
                   </p>
                 ) : null}
+                </>
+              ) : null}
                 {variantError ? (
                   <p className="text-sm font-medium text-destructive">
                     {variantError}
                   </p>
                 ) : null}
-              </div>
-            ) : null}
+            </div>
 
             <div>
               <label className="text-sm font-medium text-foreground mb-2 block">

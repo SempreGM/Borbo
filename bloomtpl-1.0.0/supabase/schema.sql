@@ -54,6 +54,7 @@ create table public.product_variants (
   product_id uuid not null references public.products(id) on delete cascade,
   size text not null,
   color text not null,
+  image_url text,
   stock integer not null default 0 check (stock >= 0),
   active boolean not null default true,
   created_at timestamptz not null default now(),

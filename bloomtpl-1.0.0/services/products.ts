@@ -7,11 +7,13 @@ export type CreateProductInput = Inserts<"products">;
 export type UpdateProductInput = Updates<"products">;
 
 export type SaveProductVariantInput = {
-  size: string;
   color: string;
+  imageUrl: string | null;
   stock: number;
   active: boolean;
 };
+
+const DEFAULT_VARIANT_SIZE = "UNICO";
 
 export async function listProducts() {
   const supabase = createSupabaseBrowserClient();
@@ -99,6 +101,24 @@ export async function listAdminProductVariants(productId: string) {
   return data;
 }
 
+export async function listAdminProductVariantsByProductIds(productIds: string[]) {
+  if (productIds.length === 0) {
+    return [];
+  }
+
+  const supabase = createSupabaseBrowserClient();
+
+  const { data, error } = await supabase
+    .from("product_variants")
+    .select("*")
+    .in("product_id", productIds)
+    .order("color", { ascending: true });
+
+  if (error) throw error;
+
+  return data;
+}
+
 export async function createProduct(input: CreateProductInput) {
   const supabase = createSupabaseBrowserClient();
 
@@ -133,6 +153,24 @@ export async function saveProductVariants(
   variants: SaveProductVariantInput[]
 ) {
   const supabase = createSupabaseBrowserClient();
+  const normalizedVariants = variants
+    .map((variant) => ({
+      product_id: productId,
+      size: DEFAULT_VARIANT_SIZE,
+      color: variant.color.trim(),
+      image_url: variant.imageUrl,
+      stock: Math.max(0, Number(variant.stock) || 0),
+      active: variant.active,
+      updated_at: new Date().toISOString(),
+    }))
+    .filter((variant) => variant.color && variant.image_url)
+    .filter(
+      (variant, index, current) =>
+        current.findIndex(
+          (item) =>
+            item.color.toLowerCase() === variant.color.toLowerCase()
+        ) === index
+    );
 
   const { error: deactivateError } = await supabase
     .from("product_variants")
@@ -140,17 +178,6 @@ export async function saveProductVariants(
     .eq("product_id", productId);
 
   if (deactivateError) throw deactivateError;
-
-  const normalizedVariants = variants
-    .map((variant) => ({
-      product_id: productId,
-      size: variant.size.trim().toUpperCase(),
-      color: variant.color.trim(),
-      stock: Math.max(0, Number(variant.stock) || 0),
-      active: variant.active,
-      updated_at: new Date().toISOString(),
-    }))
-    .filter((variant) => variant.size && variant.color);
 
   if (normalizedVariants.length === 0) {
     return [];
@@ -161,7 +188,9 @@ export async function saveProductVariants(
     .upsert(normalizedVariants, { onConflict: "product_id,size,color" })
     .select();
 
-  if (error) throw error;
+  if (error) {
+    throw new Error(error.message);
+  }
 
   return data;
 }

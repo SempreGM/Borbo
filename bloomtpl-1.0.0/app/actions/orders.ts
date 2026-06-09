@@ -75,7 +75,7 @@ async function validateTrackedVariantStock(
 
   const { data: variants, error } = await supabase
     .from("product_variants")
-    .select("id, size, color, stock, active, products(name)")
+    .select("id, product_id, size, color, stock, active, products(name)")
     .in("id", variantIds);
 
   if (error) {
@@ -187,15 +187,19 @@ async function decrementTrackedStock(
 
 async function decrementTrackedVariantStock(
   supabase: ReturnType<typeof createSupabaseAdminClient>,
-  variants: { id: string; stock: number }[],
+  variants: { id: string; product_id: string; stock: number }[],
   quantitiesByVariantId: Record<string, number>
 ) {
+  const affectedProductIds = new Set<string>();
+
   for (const variant of variants) {
     const quantity = quantitiesByVariantId[variant.id] ?? 0;
 
     if (quantity <= 0) {
       continue;
     }
+
+    affectedProductIds.add(variant.product_id);
 
     const { error } = await supabase
       .from("product_variants")
@@ -209,6 +213,41 @@ async function decrementTrackedVariantStock(
       return {
         success: false as const,
         message: "Pedido criado, mas nao foi possivel atualizar o estoque da variacao automaticamente.",
+      };
+    }
+  }
+
+  for (const productId of affectedProductIds) {
+    const { data: activeVariants, error: variantsError } = await supabase
+      .from("product_variants")
+      .select("stock")
+      .eq("product_id", productId)
+      .eq("active", true);
+
+    if (variantsError) {
+      return {
+        success: false as const,
+        message: "Pedido criado, mas nao foi possivel recalcular o estoque do produto.",
+      };
+    }
+
+    const nextProductStock = (activeVariants ?? []).reduce(
+      (sum, variant) => sum + (Number(variant.stock) || 0),
+      0
+    );
+
+    const { error: productError } = await supabase
+      .from("products")
+      .update({
+        stock: nextProductStock,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", productId);
+
+    if (productError) {
+      return {
+        success: false as const,
+        message: "Pedido criado, mas nao foi possivel sincronizar o estoque do produto.",
       };
     }
   }

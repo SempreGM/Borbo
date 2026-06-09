@@ -408,15 +408,15 @@ export default function CheckoutPage() {
 
   if (cart.length === 0 && !orderPlaced) {
     return (
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center">
-        <div className="max-w-xl mx-auto">
-          <h1 className="text-3xl font-bold text-foreground mb-4">
+      <div className="container mx-auto flex min-h-[calc(100vh-220px)] items-center justify-center px-4 py-20 text-center sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-xl">
+          <h1 className="mb-4 text-balance text-3xl font-bold leading-tight text-foreground sm:text-4xl">
             Seu carrinho está vazio
           </h1>
-          <p className="text-muted-foreground mb-8">
+          <p className="mx-auto mb-8 max-w-md text-base leading-7 text-muted-foreground sm:text-lg">
             Adicione produtos ao carrinho antes de finalizar sua compra.
           </p>
-          <Button asChild>
+          <Button asChild className="bg-primary text-primary-foreground hover:bg-primary/90">
             <Link href="/shop">Voltar para a loja</Link>
           </Button>
         </div>

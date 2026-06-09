@@ -40,6 +40,7 @@ import {
   deleteProduct,
   listAdminProducts,
   listAdminProductVariants,
+  listAdminProductVariantsByProductIds,
   saveProductVariants,
   updateProduct,
   type ProductRecord,
@@ -80,11 +81,24 @@ type ProductItem = {
 
 type ProductVariantFormRow = SaveProductVariantInput & {
   localId: string;
+  imageFile: File | null;
 };
 
 type AdminOrder = OrderRecord & {
   order_items?: OrderItemRecord[];
 };
+
+function getReadableErrorMessage(error: unknown) {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  if (typeof error === "object" && error && "message" in error) {
+    return String((error as { message?: unknown }).message);
+  }
+
+  return "";
+}
 
 const orderStatusLabels: Record<OrderStatus, string> = {
   received: "Recebido",
@@ -114,6 +128,7 @@ export default function AdminPage() {
   const [stock, setStock] = useState("0");
   const [productIsFeatured, setProductIsFeatured] = useState(false);
   const [productVariants, setProductVariants] = useState<ProductVariantFormRow[]>([]);
+  const [productColorsById, setProductColorsById] = useState<Record<string, string[]>>({});
   const [image, setImage] = useState<File | null>(null);
   const [catalogItems, setCatalogItems] = useState<ProductRecord[]>([]);
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
@@ -294,6 +309,26 @@ export default function AdminPage() {
       const products = await listAdminProducts();
       setCatalogItems(products);
       setProductError("");
+
+      const productIds = products.map((product) => product.id);
+      const variants = await listAdminProductVariantsByProductIds(productIds);
+      const colorsById = variants.reduce<Record<string, string[]>>(
+        (acc, variant) => {
+          if (!variant.active || !variant.color) {
+            return acc;
+          }
+
+          const currentColors = acc[variant.product_id] ?? [];
+
+          if (!currentColors.includes(variant.color)) {
+            acc[variant.product_id] = [...currentColors, variant.color];
+          }
+
+          return acc;
+        },
+        {}
+      );
+      setProductColorsById(colorsById);
     } catch {
       setProductError(
         "Não foi possível carregar os produtos. Confira a configuração do Supabase."
@@ -540,8 +575,9 @@ export default function AdminPage() {
       ...current,
       {
         localId: `variant-${Date.now()}`,
-        size: "",
         color: "",
+        imageUrl: null,
+        imageFile: null,
         stock: 0,
         active: true,
       },
@@ -550,8 +586,8 @@ export default function AdminPage() {
 
   const handleProductVariantChange = (
     localId: string,
-    field: keyof SaveProductVariantInput,
-    value: string | boolean
+    field: keyof SaveProductVariantInput | "imageFile",
+    value: string | boolean | File | null
   ) => {
     setProductVariants((current) =>
       current.map((variant) =>
@@ -577,7 +613,20 @@ export default function AdminPage() {
   const handleAddCatalogItem = async (event: React.FormEvent) => {
     event.preventDefault();
 
-    if (!itemName || !description || !price) {
+    const parsedPrice = Number(price);
+
+    if (!itemName.trim()) {
+      setProductError("Informe o nome do produto antes de salvar.");
+      return;
+    }
+
+    if (!description.trim()) {
+      setProductError("Informe a descrição do produto antes de salvar.");
+      return;
+    }
+
+    if (!Number.isFinite(parsedPrice) || parsedPrice <= 0) {
+      setProductError("Informe um valor válido maior que zero.");
       return;
     }
 
@@ -595,44 +644,94 @@ export default function AdminPage() {
       const productImages = uploadedImageUrl
         ? [uploadedImageUrl]
         : currentProduct?.images ?? [];
-      const activeVariantStock = productVariants
-        .filter((variant) => variant.active && variant.size.trim() && variant.color.trim())
+      const filledVariants = productVariants.filter(
+        (variant) => variant.color.trim() || variant.imageUrl || variant.imageFile
+      );
+      const variantsMissingColor = filledVariants.some(
+        (variant) => !variant.color.trim()
+      );
+      const variantsMissingImage = filledVariants.some(
+        (variant) => !variant.imageUrl && !variant.imageFile
+      );
+
+      if (variantsMissingColor) {
+        setProductError("Toda cor cadastrada precisa ter nome.");
+        return;
+      }
+
+      if (variantsMissingImage) {
+        setProductError("Toda cor cadastrada precisa ter uma foto de referência.");
+        return;
+      }
+
+      const preparedVariants = await Promise.all(
+        filledVariants.map(async (variant) => ({
+          color: variant.color,
+          imageUrl: variant.imageFile
+            ? await uploadImage(variant.imageFile, PRODUCT_IMAGES_BUCKET)
+            : variant.imageUrl,
+          stock: variant.stock,
+          active: variant.active,
+        }))
+      );
+      const activeVariantStock = preparedVariants
+        .filter((variant) => variant.active && variant.color.trim() && variant.imageUrl)
         .reduce((sum, variant) => sum + (Number(variant.stock) || 0), 0);
 
       const payload = {
         name: itemName,
         slug: createSlug(itemName),
         description,
-        price: Number(price),
+        price: parsedPrice,
         category_name: categoryName.trim() || null,
         images: productImages,
-        stock: productVariants.length > 0 ? activeVariantStock : Number(stock) || 0,
+        stock: filledVariants.length > 0 ? activeVariantStock : Number(stock) || 0,
         is_featured: productIsFeatured,
         is_active: true,
         updated_at: new Date().toISOString(),
       };
 
       if (editingItemId) {
-        const updatedProduct = await updateProduct(editingItemId, payload);
-        await saveProductVariants(editingItemId, productVariants);
-        setCatalogItems((current) =>
-          current.map((product) =>
-            product.id === editingItemId ? updatedProduct : product
-          )
-        );
+        await updateProduct(editingItemId, payload);
+        await saveProductVariants(editingItemId, preparedVariants);
         setProductFeedback("Produto atualizado com sucesso.");
       } else {
         const createdProduct = await createProduct(payload);
-        await saveProductVariants(createdProduct.id, productVariants);
-        setCatalogItems((current) => [createdProduct, ...current]);
+        await saveProductVariants(createdProduct.id, preparedVariants);
         setProductFeedback("Produto cadastrado com sucesso.");
       }
 
+      await loadProducts();
       resetProductForm();
-    } catch {
-      setProductError(
-        "Não foi possível salvar o produto. Confira se você está logado como admin no Supabase."
-      );
+    } catch (error) {
+      const errorMessage = getReadableErrorMessage(error);
+      const lowerErrorMessage = errorMessage.toLowerCase();
+
+      if (
+        lowerErrorMessage.includes("image_url") ||
+        lowerErrorMessage.includes("schema cache")
+      ) {
+        setProductError(
+          "Não foi possível salvar as cores porque a coluna image_url ainda não existe no Supabase. Rode: alter table public.product_variants add column if not exists image_url text;"
+        );
+      } else if (lowerErrorMessage.includes("product_variants")) {
+        setProductError(
+          `Não foi possível salvar as cores na tabela product_variants. Detalhe: ${errorMessage}`
+        );
+      } else if (
+        lowerErrorMessage.includes("storage") ||
+        lowerErrorMessage.includes("bucket")
+      ) {
+        setProductError(
+          `Não foi possível enviar a foto da cor para o Storage. Detalhe: ${errorMessage}`
+        );
+      } else {
+        setProductError(
+          errorMessage
+            ? `Não foi possível salvar o produto. Detalhe: ${errorMessage}`
+            : "Não foi possível salvar o produto. Confira se você está logado como admin no Supabase."
+        );
+      }
     } finally {
       setIsSavingProduct(false);
     }
@@ -661,8 +760,9 @@ export default function AdminPage() {
       setProductVariants(
         variants.map((variant) => ({
           localId: variant.id,
-          size: variant.size,
           color: variant.color,
+          imageUrl: variant.image_url,
+          imageFile: null,
           stock: variant.stock,
           active: variant.active,
         }))
@@ -678,7 +778,7 @@ export default function AdminPage() {
 
     try {
       await deleteProduct(itemId);
-      setCatalogItems((current) => current.filter((item) => item.id !== itemId));
+      await loadProducts();
       setProductFeedback("Produto removido da loja.");
       if (editingItemId === itemId) {
         handleCancelEdit();
@@ -1100,7 +1200,7 @@ export default function AdminPage() {
               ) : null}
 
               {isFormOpen && (
-                <form className="mt-6 space-y-6" onSubmit={handleAddCatalogItem}>
+                <form className="mt-6 space-y-6" onSubmit={handleAddCatalogItem} noValidate>
                   <div>
                     <label className="text-sm font-medium text-foreground mb-2 block">
                       Nome do item
@@ -1110,7 +1210,6 @@ export default function AdminPage() {
                       value={itemName}
                       onChange={(e) => setItemName(e.target.value)}
                       placeholder="Ex: Vestido Seda borbô"
-                      required
                     />
                   </div>
 
@@ -1123,7 +1222,6 @@ export default function AdminPage() {
                       onChange={(e) => setDescription(e.target.value)}
                       placeholder="Descreva o produto, tecido e estilo"
                       rows={4}
-                      required
                     />
                   </div>
 
@@ -1139,7 +1237,6 @@ export default function AdminPage() {
                         placeholder="199.90"
                         min="0"
                         step="0.01"
-                        required
                       />
                     </div>
                     <div>
@@ -1173,10 +1270,10 @@ export default function AdminPage() {
                       <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <div>
                           <p className="text-sm font-medium text-foreground">
-                            Variações de tamanho e cor
+                            Cores do produto
                           </p>
                           <p className="text-xs text-muted-foreground">
-                            Use para roupas com estoque por tamanho/cor.
+                            Cadastre cor, estoque e uma foto de referência obrigatória.
                           </p>
                         </div>
                         <Button
@@ -1184,7 +1281,7 @@ export default function AdminPage() {
                           variant="outline"
                           onClick={handleAddProductVariant}
                         >
-                          Adicionar variação
+                          Adicionar cor
                         </Button>
                       </div>
 
@@ -1193,29 +1290,14 @@ export default function AdminPage() {
                           {productVariants.map((variant) => (
                             <div
                               key={variant.localId}
-                              className="grid gap-3 rounded-2xl border border-border bg-white p-3 md:grid-cols-[1fr_1fr_120px_110px_auto] md:items-end"
+                              className="grid gap-3 rounded-2xl border border-border bg-white p-3 md:grid-cols-[minmax(140px,1fr)_minmax(220px,1.35fr)_120px_110px_auto] md:items-start"
                             >
                               <div>
-                                <label className="text-xs font-medium text-foreground">
-                                  Tamanho
-                                </label>
-                                <Input
-                                  value={variant.size}
-                                  onChange={(event) =>
-                                    handleProductVariantChange(
-                                      variant.localId,
-                                      "size",
-                                      event.target.value
-                                    )
-                                  }
-                                  placeholder="P, M, G"
-                                />
-                              </div>
-                              <div>
-                                <label className="text-xs font-medium text-foreground">
+                                <label className="mb-2 block text-xs font-medium text-foreground">
                                   Cor
                                 </label>
                                 <Input
+                                  className="h-10"
                                   value={variant.color}
                                   onChange={(event) =>
                                     handleProductVariantChange(
@@ -1228,10 +1310,55 @@ export default function AdminPage() {
                                 />
                               </div>
                               <div>
-                                <label className="text-xs font-medium text-foreground">
+                                <label className="mb-2 block text-xs font-medium text-foreground">
+                                  Foto da cor
+                                </label>
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  onChange={(event) => {
+                                    const selectedFile = event.target.files?.[0] ?? null;
+
+                                    if (
+                                      selectedFile &&
+                                      selectedFile.size > MAX_SITE_IMAGE_UPLOAD_SIZE_BYTES
+                                    ) {
+                                      setProductError(
+                                        `A imagem "${selectedFile.name}" ultrapassa o limite de ${MAX_SITE_IMAGE_UPLOAD_SIZE_LABEL}.`
+                                      );
+                                      event.target.value = "";
+                                      return;
+                                    }
+
+                                    handleProductVariantChange(
+                                      variant.localId,
+                                      "imageFile",
+                                      selectedFile
+                                    );
+                                    setProductError("");
+                                  }}
+                                  className="h-10 w-full rounded-md border border-border bg-white px-3 py-2 text-xs text-foreground"
+                                />
+                                {variant.imageFile ? (
+                                  <p className="mt-1 min-h-4 truncate text-xs text-muted-foreground">
+                                    {variant.imageFile.name}
+                                  </p>
+                                ) : variant.imageUrl ? (
+                                  <p className="mt-1 min-h-4 text-xs text-muted-foreground">
+                                    Foto cadastrada
+                                  </p>
+                                ) : (
+                                  <p className="mt-1 min-h-4 text-xs text-destructive">
+                                    Foto obrigatória
+                                  </p>
+                                )}
+                              </div>
+                              <div>
+                                <label className="mb-2 block text-xs font-medium text-foreground">
                                   Estoque
                                 </label>
                                 <Input
+                                  className="h-10"
                                   type="number"
                                   min="0"
                                   step="1"
@@ -1245,7 +1372,11 @@ export default function AdminPage() {
                                   }
                                 />
                               </div>
-                              <label className="flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-sm text-foreground">
+                              <div>
+                                <span className="mb-2 block text-xs font-medium text-foreground">
+                                  Status
+                                </span>
+                                <label className="flex h-10 items-center gap-2 rounded-xl border border-border px-3 py-2 text-sm text-foreground">
                                 <input
                                   type="checkbox"
                                   checked={variant.active}
@@ -1259,10 +1390,11 @@ export default function AdminPage() {
                                 />
                                 Ativa
                               </label>
+                              </div>
                               <Button
                                 type="button"
                                 variant="ghost"
-                                className="text-destructive hover:text-destructive"
+                                className="mt-6 h-10 text-destructive hover:text-destructive"
                                 onClick={() => handleRemoveProductVariant(variant.localId)}
                               >
                                 Remover
@@ -1272,7 +1404,7 @@ export default function AdminPage() {
                         </div>
                       ) : (
                         <div className="rounded-2xl border border-dashed border-border bg-white p-4 text-sm text-muted-foreground">
-                          Nenhuma variação cadastrada para este produto.
+                          Nenhuma cor cadastrada para este produto.
                         </div>
                       )}
                     </div>
@@ -1362,6 +1494,15 @@ export default function AdminPage() {
                               <span className="rounded-full bg-white px-3 py-1 text-muted-foreground">
                                 Estoque: {product.stock}
                               </span>
+                              {(productColorsById[product.id] ?? []).length > 0 ? (
+                                <span className="rounded-full bg-white px-3 py-1 text-muted-foreground">
+                                  Cores: {productColorsById[product.id].join(", ")}
+                                </span>
+                              ) : (
+                                <span className="rounded-full bg-white px-3 py-1 text-muted-foreground">
+                                  Sem cores cadastradas
+                                </span>
+                              )}
                               {product.is_featured ? (
                                 <span className="rounded-full bg-primary/10 px-3 py-1 text-primary">
                                   Destaque
@@ -1729,7 +1870,7 @@ export default function AdminPage() {
                     <Input
                       value={couponCode}
                       onChange={(event) => setCouponCode(event.target.value.toUpperCase())}
-                      placeholder="EX: BORBO10"
+                      placeholder="EX: DESCONTO10"
                       required
                     />
                   </div>

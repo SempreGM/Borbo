@@ -38,7 +38,6 @@ export default function ProductList() {
   };
 
   const handleSave = () => {
-    console.log("borbô Admin - Salvando listagem geral:", products.map((product) => product.id));
     setIsModified(false);
   };
 

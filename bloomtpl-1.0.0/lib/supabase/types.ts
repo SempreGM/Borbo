@@ -108,6 +108,7 @@ export type Database = {
           product_id: string;
           size: string;
           color: string;
+          image_url: string | null;
           stock: number;
           active: boolean;
           created_at: string;
@@ -118,6 +119,7 @@ export type Database = {
           product_id: string;
           size: string;
           color: string;
+          image_url?: string | null;
           stock?: number;
           active?: boolean;
           created_at?: string;

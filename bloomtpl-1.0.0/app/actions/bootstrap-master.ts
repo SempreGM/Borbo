@@ -2,9 +2,6 @@
 
 import { createSupabaseAdminClient } from "@/lib/supabase/server";
 
-const MASTER_EMAIL = "bernardomaia57@gmail.com";
-const MASTER_PASSWORD = "bernardo57";
-
 async function findUserByEmail(email: string) {
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase.auth.admin.listUsers({
@@ -30,24 +27,36 @@ export async function bootstrapMasterAccountAction() {
     };
   }
 
+  const masterEmail = process.env.MASTER_BOOTSTRAP_EMAIL;
+  const masterPassword = process.env.MASTER_BOOTSTRAP_PASSWORD;
+  const masterName = process.env.MASTER_BOOTSTRAP_NAME ?? "Admin";
+
+  if (!masterEmail || !masterPassword) {
+    return {
+      success: false,
+      message:
+        "Bootstrap master sem credenciais. Defina MASTER_BOOTSTRAP_EMAIL e MASTER_BOOTSTRAP_PASSWORD no .env.local.",
+    };
+  }
+
   try {
     const supabase = createSupabaseAdminClient();
-    const existingUser = await findUserByEmail(MASTER_EMAIL);
+    const existingUser = await findUserByEmail(masterEmail);
 
     const { data, error } = existingUser
       ? await supabase.auth.admin.updateUserById(existingUser.id, {
-          password: MASTER_PASSWORD,
+          password: masterPassword,
           email_confirm: true,
           user_metadata: {
-            name: "Bernardo Maia",
+            name: masterName,
           },
         })
       : await supabase.auth.admin.createUser({
-          email: MASTER_EMAIL,
-          password: MASTER_PASSWORD,
+          email: masterEmail,
+          password: masterPassword,
           email_confirm: true,
           user_metadata: {
-            name: "Bernardo Maia",
+            name: masterName,
           },
         });
 
@@ -60,8 +69,8 @@ export async function bootstrapMasterAccountAction() {
 
     const { error: profileError } = await supabase.from("profiles").upsert({
       id: data.user.id,
-      email: MASTER_EMAIL,
-      name: "Bernardo Maia",
+      email: masterEmail,
+      name: masterName,
       role: "admin",
       updated_at: new Date().toISOString(),
     });
